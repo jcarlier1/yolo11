@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 def main():
     # Configuration
     dataset_yaml = "/home/carlier1/data/yolo_kitti_cars/dataset.yaml"
-    model_size = "yolo11x.pt"  # Use x model for faster training
+    model_size = "yolo11x.pt"  # Use x model
     epochs = 500
     imgsz = 640
     batch_size = -1
@@ -82,15 +82,43 @@ def main():
     logger.info("Exporting model...")
     model.export(format="onnx")  # Export to ONNX format
     
-    # Test on sample images
-    logger.info("Running inference on sample images...")
-    results = model.predict(
+    # Test on test dataset
+    logger.info("Running test dataset...")
+    test_results = model.predict(
+        source=f"/home/carlier1/data/yolo_kitti_cars/test/images",
+        save=True,
+        save_txt=True,
+        save_conf=True,
+        project=project_name,
+        name=f"{experiment_name}_test",
+        conf=0.25,  # Lower confidence threshold for testing
+        iou=0.7,    # IoU threshold for NMS
+        verbose=True,
+    )
+    
+    # Calculate test statistics
+    total_test_images = len(test_results)
+    images_with_detections = sum(1 for result in test_results if len(result.boxes) > 0)
+    total_detections = sum(len(result.boxes) for result in test_results)
+    
+    logger.info("Test completed!")
+    print(f"\nTest Results:")
+    print("=" * 15)
+    print(f"Total test images: {total_test_images}")
+    print(f"Images with car detections: {images_with_detections}")
+    print(f"Total car detections: {total_detections}")
+    print(f"Average detections per image: {total_detections/total_test_images:.2f}")
+    print(f"Detection rate: {images_with_detections/total_test_images:.1%}")
+    
+    # Sample inference on validation images for comparison
+    logger.info("Running sample inference on validation images...")
+    val_results = model.predict(
         source=f"/home/carlier1/data/yolo_kitti_cars/val/images",
         save=True,
         save_txt=True,
         project=project_name,
-        name=f"{experiment_name}_inference",
-        conf=0.5,  # Confidence threshold
+        name=f"{experiment_name}_validation_inference",
+        conf=0.5,  # Higher confidence threshold for validation samples
         max_det=50,  # Maximum detections per image
     )
     
@@ -98,12 +126,22 @@ def main():
     print(f"Model weights saved in: {project_name}/{experiment_name}/weights/")
     print(f"Best weights: {project_name}/{experiment_name}/weights/best.pt")
     print(f"Last weights: {project_name}/{experiment_name}/weights/last.pt")
-    print(f"Inference results: {project_name}/{experiment_name}_inference/")
+    print(f"Test results: {project_name}/{experiment_name}_test/")
+    print(f"Validation inference results: {project_name}/{experiment_name}_validation_inference/")
+    
+    print("\nFiles generated:")
+    print(f"- Training plots and metrics: {project_name}/{experiment_name}/")
+    print(f"- Test predictions: {project_name}/{experiment_name}_test/")
+    print(f"- Validation samples: {project_name}/{experiment_name}_validation_inference/")
+    print(f"- ONNX model: {project_name}/{experiment_name}/weights/best.onnx")
     
     print("\nTo use the trained model:")
     print(f"from ultralytics import YOLO")
     print(f"model = YOLO('{project_name}/{experiment_name}/weights/best.pt')")
     print(f"results = model.predict('path/to/image.jpg')")
+    
+    print("\nTo test on new images:")
+    print(f"python test.py --weights {project_name}/{experiment_name}/weights/best.pt")
 
 if __name__ == "__main__":
     main()

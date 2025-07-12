@@ -28,16 +28,18 @@ logger = logging.getLogger(__name__)
 class KittiCarToYoloConverter:
     """Converts KITTI dataset format to YOLO format for Car detection only."""
     
-    def __init__(self, kitti_root: str, yolo_root: str):
+    def __init__(self, kitti_root: str, yolo_root: str, train_split: float = 0.8):
         """
         Initialize the converter.
         
         Args:
             kitti_root: Path to KITTI dataset root directory
             yolo_root: Path where YOLO dataset will be created
+            train_split: Percentage of training data to use for training (rest goes to validation)
         """
         self.kitti_root = Path(kitti_root)
         self.yolo_root = Path(yolo_root)
+        self.train_split = train_split
         
         # Only Car class mapping - all cars get class ID 0
         self.class_mapping = {
@@ -56,62 +58,37 @@ class KittiCarToYoloConverter:
         
         logger.info(f"Created YOLO directory structure at {self.yolo_root}")
     
-    def _read_image_sets(self) -> Dict[str, List[str]]:
+    def _create_splits(self) -> Dict[str, List[str]]:
         """
-        Read ImageSets files to get train/val/test splits.
+        Create train/val/test splits from available data.
         
         Returns:
             Dictionary mapping split names to list of image IDs
         """
-        splits = {}
-        imageset_dir = self.kitti_root / 'training' / 'ImageSets'
-        
-        if not imageset_dir.exists():
-            logger.warning(f"ImageSets directory not found at {imageset_dir}")
-            return {}
-        
-        # Common ImageSet files in KITTI
-        imageset_files = {
-            'train': 'train.txt',
-            'val': 'val.txt', 
-            'test': 'test.txt',
-            'trainval': 'trainval.txt'
-        }
-        
-        for split, filename in imageset_files.items():
-            filepath = imageset_dir / filename
-            if filepath.exists():
-                with open(filepath, 'r') as f:
-                    splits[split] = [line.strip() for line in f.readlines()]
-                logger.info(f"Loaded {len(splits[split])} samples for {split} split")
-        
-        # If no predefined splits, create them from available data
-        if not splits:
-            splits = self._create_default_splits()
-        
-        return splits
-    
-    def _create_default_splits(self) -> Dict[str, List[str]]:
-        """Create default train/val/test splits if ImageSets are not available."""
-        training_labels = self.kitti_root / 'training' / 'label'
-        testing_images = self.kitti_root / 'testing' / 'image_2'
-        
         splits = {'train': [], 'val': [], 'test': []}
         
-        # Get training data IDs
-        if training_labels.exists():
-            training_ids = [f.stem for f in training_labels.glob('*.txt')]
-            # Split training data: 80% train, 20% val
-            split_idx = int(0.8 * len(training_ids))
+        # Get training data IDs from training/image_2
+        training_images = self.kitti_root / 'training' / 'image_2'
+        if training_images.exists():
+            training_ids = [f.stem for f in training_images.glob('*.png')]
+            training_ids.sort()  # Sort for consistent splits
+            
+            # Split training data based on train_split parameter
+            split_idx = int(self.train_split * len(training_ids))
             splits['train'] = training_ids[:split_idx]
             splits['val'] = training_ids[split_idx:]
+            
+            logger.info(f"Training data split: {len(splits['train'])} train, {len(splits['val'])} validation")
+        else:
+            logger.warning(f"Training images directory not found at {training_images}")
         
-        # Get testing data IDs
+        # Get testing data IDs from testing/image_2
+        testing_images = self.kitti_root / 'testing' / 'image_2'
         if testing_images.exists():
             splits['test'] = [f.stem for f in testing_images.glob('*.png')]
-        
-        logger.info(f"Created default splits: train={len(splits['train'])}, "
-                   f"val={len(splits['val'])}, test={len(splits['test'])}")
+            logger.info(f"Testing data: {len(splits['test'])} samples")
+        else:
+            logger.warning(f"Testing images directory not found at {testing_images}")
         
         return splits
     
@@ -306,9 +283,10 @@ nc: 1
     def convert(self):
         """Convert the entire KITTI dataset to YOLO format (Car detection only)."""
         logger.info("Starting KITTI to YOLO conversion (Car detection only)")
+        logger.info(f"Train/validation split ratio: {self.train_split:.1%} train, {1-self.train_split:.1%} validation")
         
-        # Read image sets
-        splits = self._read_image_sets()
+        # Create splits from available data
+        splits = self._create_splits()
         
         # Convert each split
         for split_name, image_ids in splits.items():
@@ -316,11 +294,7 @@ nc: 1
                 continue
                 
             is_test = split_name == 'test'
-            
-            # Map 'trainval' to 'train' for YOLO
-            yolo_split = 'train' if split_name == 'trainval' else split_name
-            
-            self.convert_split(yolo_split, image_ids, is_test)
+            self.convert_split(split_name, image_ids, is_test)
         
         # Create YAML configuration
         self.create_yaml_config()
@@ -335,6 +309,8 @@ def main():
                        help='Path to KITTI dataset root directory')
     parser.add_argument('--yolo_root', type=str, default='/home/carlier1/data/yolo_kitti_cars',
                        help='Path where YOLO dataset will be created')
+    parser.add_argument('--train_split', type=float, default=0.8,
+                       help='Percentage of training data to use for training (default: 0.8)')
     parser.add_argument('--verbose', '-v', action='store_true',
                        help='Enable verbose logging')
     
@@ -348,8 +324,13 @@ def main():
         logger.error(f"KITTI dataset directory not found: {args.kitti_root}")
         return
     
+    # Validate train_split parameter
+    if not 0.1 <= args.train_split <= 0.9:
+        logger.error(f"train_split must be between 0.1 and 0.9, got {args.train_split}")
+        return
+    
     # Create converter and run conversion
-    converter = KittiCarToYoloConverter(args.kitti_root, args.yolo_root)
+    converter = KittiCarToYoloConverter(args.kitti_root, args.yolo_root, args.train_split)
     converter.convert()
 
 

@@ -14,20 +14,26 @@ def main():
     kitti_root = "/home/carlier1/data/kitti"
     yolo_root = "/home/carlier1/data/yolo_kitti_cars"
     
+    # Define train/validation split ratio (80% train, 20% validation)
+    train_split = 0.8
+    
     print("KITTI to YOLO Dataset Converter (Car Detection Only)")
     print("=" * 55)
     print(f"Input (KITTI): {kitti_root}")
     print(f"Output (YOLO): {yolo_root}")
+    print(f"Train/Val Split: {train_split:.1%} train, {1-train_split:.1%} validation")
     print()
     print("Features:")
     print("- Filters only Car bounding boxes from KITTI dataset")
     print("- Ignores all other classes (Van, Truck, Pedestrian, etc.)")
     print("- Converts Car class to YOLO class ID 0")
     print("- Creates single-class car detection dataset")
+    print("- Creates custom train/validation splits from training data")
+    print("- Uses testing data for test set")
     print()
     
-    # Create converter
-    converter = KittiCarToYoloConverter(kitti_root, yolo_root)
+    # Create converter with custom train_split
+    converter = KittiCarToYoloConverter(kitti_root, yolo_root, train_split)
     
     # Run conversion
     converter.convert()
@@ -48,10 +54,17 @@ def main():
     print("  └── dataset.yaml")
     print()
     print("Notes:")
+    print("- Train/validation split is created from KITTI training data")
+    print("- Test set uses KITTI testing data (no labels available)")
+    print("- Split ratio is configurable (default: 80% train, 20% validation)")
     print("- Only images with Car annotations will have corresponding label files")
     print("- Images without Cars will have empty or no label files")
     print("- All Car instances are labeled with class ID 0")
     print("- Dataset is ready for YOLO training with 1 class (Car)")
+    print()
+    print("Alternative usage with different split ratios:")
+    print("- converter = KittiCarToYoloConverter(kitti_root, yolo_root, 0.7)  # 70/30 split")
+    print("- converter = KittiCarToYoloConverter(kitti_root, yolo_root, 0.85) # 85/15 split")
 
 if __name__ == "__main__":
     main()
