@@ -144,10 +144,10 @@ class KittiCarToYoloConverter:
                 height = max(0, min(1, height))
                 
                 # Skip very small bounding boxes (likely annotation errors)
-                if width < 0.01 or height < 0.01:
-                    logger.warning(f"Skipping very small bounding box: {width:.4f} x {height:.4f}")
-                    continue
-                
+                #if width < 0.01 or height < 0.01:
+                #    logger.warning(f"Skipping very small bounding box: {width:.4f} x {height:.4f}")
+                #    continue
+
                 # Car class ID is always 0 in our single-class system
                 class_id = 0
                 yolo_annotation = f"{class_id} {center_x:.6f} {center_y:.6f} {width:.6f} {height:.6f}"
