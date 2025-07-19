@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Test YOLO v11x model on KITTI dataset
+Test YOLOv10 model on KITTI dataset using pre-trained model
 """
 
 from pathlib import Path
@@ -55,13 +55,12 @@ def verify_test_setup():
     
     return True
 
-def test_model(weights_path, conf_threshold=0.25, iou_threshold=0.7, imgsz=640, 
-               output_name="test_yolov11x", save_txt=True, save_conf=True):
+def test_model(conf_threshold=0.25, iou_threshold=0.7, imgsz=640, 
+               output_name="test_yolov10n", save_txt=True, save_conf=True):
     """
-    Test the trained model on test set.
+    Test the pre-trained YOLOv10 model on test set.
     
     Args:
-        weights_path: Path to model weights
         conf_threshold: Confidence threshold for predictions
         iou_threshold: IoU threshold for NMS
         imgsz: Image size for inference
@@ -75,7 +74,7 @@ def test_model(weights_path, conf_threshold=0.25, iou_threshold=0.7, imgsz=640,
         print("Error: ultralytics not installed. Install with: pip install ultralytics")
         sys.exit(1)
     
-    print(f"Testing model with weights: {weights_path}")
+    print(f"Testing pre-trained YOLOv10 model")
     print(f"Configuration:")
     print(f"  - Confidence threshold: {conf_threshold}")
     print(f"  - IoU threshold: {iou_threshold}")
@@ -84,12 +83,14 @@ def test_model(weights_path, conf_threshold=0.25, iou_threshold=0.7, imgsz=640,
     print(f"  - Save predictions: {save_txt}")
     print(f"  - Save confidence: {save_conf}")
     
-    # Check if weights file exists
-    if not Path(weights_path).exists():
-        raise FileNotFoundError(f"Model weights not found: {weights_path}")
-    
-    # Load trained model
-    model = YOLO(weights_path)
+    # Load pre-trained model from local PyTorch file
+    print("Loading pre-trained YOLOv10 model from local .pt file...")
+    try:
+        model_path = "yolov10n_finetuned_kitti.pt"
+        model = YOLO(model_path, task='detect')
+    except Exception as e:
+        print(f"Failed to load the model: {e}")
+        sys.exit(1)
     
     # Run prediction on test set
     test_results = model.predict(
@@ -125,12 +126,11 @@ def test_model(weights_path, conf_threshold=0.25, iou_threshold=0.7, imgsz=640,
     
     return test_results
 
-def validate_model(weights_path, imgsz=640, batch=16):
+def validate_model(imgsz=640, batch=16):
     """
-    Validate the trained model (if validation data is available).
+    Validate the pre-trained YOLOv10 model from Hugging Face.
     
     Args:
-        weights_path: Path to model weights
         imgsz: Image size for validation
         batch: Batch size for validation
     """
@@ -140,14 +140,14 @@ def validate_model(weights_path, imgsz=640, batch=16):
         print("Error: ultralytics not installed. Install with: pip install ultralytics")
         sys.exit(1)
     
-    print(f"Validating model with weights: {weights_path}")
-    
-    # Check if weights file exists
-    if not Path(weights_path).exists():
-        raise FileNotFoundError(f"Model weights not found: {weights_path}")
-    
-    # Load trained model
-    model = YOLO(weights_path)
+    # Load pre-trained model from local PyTorch file
+    print("Loading pre-trained YOLOv10 model from local .pt file...")
+    try:
+        model_path = "yolov10n_finetuned_kitti.pt"
+        model = YOLO(model_path, task='detect')
+    except Exception as e:
+        print(f"Failed to load the model: {e}")
+        sys.exit(1)
     
     # Run validation
     val_results = model.val(
@@ -165,17 +165,14 @@ def validate_model(weights_path, imgsz=640, batch=16):
 
 def main():
     """Main function to run the testing."""
-    parser = argparse.ArgumentParser(description='Test YOLO model on KITTI dataset')
-    parser.add_argument('--weights', type=str, 
-                       default='models/best11x.pt',
-                       help='Path to model weights')
+    parser = argparse.ArgumentParser(description='Test YOLOv10 model on KITTI dataset')
     parser.add_argument('--conf', type=float, default=0.25,
                        help='Confidence threshold for predictions')
     parser.add_argument('--iou', type=float, default=0.7,
                        help='IoU threshold for NMS')
     parser.add_argument('--imgsz', type=int, default=640,
                        help='Image size for inference')
-    parser.add_argument('--name', type=str, default='test_yolov11x',
+    parser.add_argument('--name', type=str, default='test_yolov10n',
                        help='Name for output directory')
     parser.add_argument('--no-validate', action='store_true',
                        help='Skip validation on validation set')
@@ -199,15 +196,14 @@ def main():
         # Step 2: Run validation (if requested)
         if not args.no_validate:
             print("Step 2: Running validation...")
-            val_results = validate_model(args.weights)
+            val_results = validate_model()
             print("✓ Validation completed!")
             print()
         
         # Step 3: Test model
-        '''test_step = "Step 3" if not args.no_validate else "Step 2"
+        test_step = "Step 3" if not args.no_validate else "Step 2"
         print(f"{test_step}: Testing model on test set...")
         test_results = test_model(
-            weights_path=args.weights,
             conf_threshold=args.conf,
             iou_threshold=args.iou,
             imgsz=args.imgsz,
@@ -216,7 +212,8 @@ def main():
             save_conf=not args.no_save_conf
         )
         print("✓ Testing completed!")
-        print()'''
+        print()
+
         
         print("=== Testing completed successfully! ===")
         print(f"Check the 'runs/detect/{args.name}/' directory for results.")

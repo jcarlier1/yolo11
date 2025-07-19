@@ -1,118 +1,232 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
-Test the trained YOLO11 Car detection model
+Test YOLO11 model for Car detection on KITTI dataset
 """
 
-from ultralytics import YOLO
-import cv2
-import numpy as np
 from pathlib import Path
 import argparse
-import logging
+import yaml
+import sys
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+# ------------------------------------------------------------------------------------
+# 0. Fixed paths for car detection dataset
+# ------------------------------------------------------------------------------------
 
-def test_car_detection(model_path, image_path, output_dir="results", conf_threshold=0.5):
+YOLO_ROOT    = Path("/home/carlier1/data/yolo_kitti_cars")
+DATA_YAML    = YOLO_ROOT / "dataset.yaml"  # dataset configuration file
+
+# YOLO dataset structure
+TEST_DIR     = YOLO_ROOT / "test"
+TEST_IMAGES  = TEST_DIR / "images"
+TEST_LABELS  = TEST_DIR / "labels"
+
+def verify_test_setup():
+    """Verify that the test setup is valid."""
+    print("Verifying test setup...")
+    
+    # Check test directories
+    required_dirs = [YOLO_ROOT, TEST_DIR, TEST_IMAGES]
+    
+    for dir_path in required_dirs:
+        if not dir_path.exists():
+            raise FileNotFoundError(f"Required directory not found: {dir_path}")
+        print(f"✓ {dir_path}")
+    
+    # Check dataset.yaml
+    if not DATA_YAML.exists():
+        raise FileNotFoundError(f"Dataset configuration not found: {DATA_YAML}")
+    print(f"✓ {DATA_YAML}")
+    
+    # Count test files
+    test_images = len(list(TEST_IMAGES.glob("*")))
+    test_labels = len(list(TEST_LABELS.glob("*.txt"))) if TEST_LABELS.exists() else 0
+    
+    print(f"\nTest Dataset Summary:")
+    print(f"  Test: {test_images} images, {test_labels} labels")
+    
+    # Verify dataset.yaml content
+    with open(DATA_YAML, 'r') as f:
+        config = yaml.safe_load(f)
+    
+    print(f"\nDataset Configuration:")
+    print(f"  Path: {config.get('path', 'Not specified')}")
+    print(f"  Classes: {len(config.get('names', {}))}")
+    print(f"  Class names: {list(config.get('names', {}).values())}")
+    
+    return True
+
+def test_model(weights_path, conf_threshold=0.25, iou_threshold=0.7, imgsz=640, 
+               output_name='test_yolov11x_cars', save_txt=True, save_conf=True):
     """
-    Test car detection on a single image or directory of images.
+    Test the trained car detection model on test set.
     
     Args:
-        model_path: Path to the trained YOLO model
-        image_path: Path to image file or directory
-        output_dir: Directory to save results
-        conf_threshold: Confidence threshold for detections
+        weights_path: Path to model weights
+        conf_threshold: Confidence threshold for predictions
+        iou_threshold: IoU threshold for NMS
+        imgsz: Image size for inference
+        output_name: Name for output directory
+        save_txt: Save predictions as text files
+        save_conf: Save confidence scores
     """
+    try:
+        from ultralytics import YOLO
+    except ImportError:
+        print("Error: ultralytics not installed. Install with: pip install ultralytics")
+        sys.exit(1)
     
-    # Load the trained model
-    logger.info(f"Loading model: {model_path}")
-    model = YOLO(model_path)
+    print(f"Testing car detection model with weights: {weights_path}")
+    print(f"Configuration:")
+    print(f"  - Confidence threshold: {conf_threshold}")
+    print(f"  - IoU threshold: {iou_threshold}")
+    print(f"  - Image size: {imgsz}")
+    print(f"  - Output name: {output_name}")
+    print(f"  - Save predictions: {save_txt}")
+    print(f"  - Save confidence: {save_conf}")
     
-    # Create output directory
-    output_path = Path(output_dir)
-    output_path.mkdir(exist_ok=True)
+    # Check if weights file exists
+    if not Path(weights_path).exists():
+        raise FileNotFoundError(f"Model weights not found: {weights_path}")
     
-    # Run inference
-    logger.info(f"Running inference on: {image_path}")
-    results = model.predict(
-        source=image_path,
-        save=True,
-        save_txt=True,
-        project=output_dir,
-        name="car_detection",
+    # Load trained model
+    model = YOLO(weights_path)
+    
+    # Run prediction on test set
+    test_results = model.predict(
+        source=str(TEST_IMAGES),
+        imgsz=imgsz,
         conf=conf_threshold,
-        max_det=50,
+        iou=iou_threshold,
+        save=True,
+        save_txt=save_txt,
+        save_conf=save_conf,
+        project="runs/detect",
+        name=output_name,
+        exist_ok=True,
+        verbose=True,
         device=0,  # Use GPU if available
     )
     
-    # Process results
-    for i, result in enumerate(results):
-        # Get detection info
-        boxes = result.boxes
-        if boxes is not None:
-            num_cars = len(boxes)
-            confidences = boxes.conf.cpu().numpy()
-            
-            logger.info(f"Image {i+1}: Detected {num_cars} cars")
-            for j, conf in enumerate(confidences):
-                logger.info(f"  Car {j+1}: Confidence = {conf:.3f}")
-        else:
-            logger.info(f"Image {i+1}: No cars detected")
+    print("Testing completed!")
+    print(f"Results saved at: runs/detect/{output_name}/")
     
-    print(f"\nResults saved to: {output_dir}/car_detection/")
-    return results
+    # Print summary statistics
+    if test_results:
+        total_images = len(test_results)
+        images_with_detections = sum(1 for result in test_results if len(result.boxes) > 0)
+        total_detections = sum(len(result.boxes) for result in test_results)
+        
+        print(f"\nTest Summary:")
+        print(f"  - Total images processed: {total_images}")
+        print(f"  - Images with car detections: {images_with_detections}")
+        print(f"  - Total car detections: {total_detections}")
+        print(f"  - Average car detections per image: {total_detections/total_images:.2f}")
+        print(f"  - Car detection rate: {images_with_detections/total_images:.1%}")
+    
+    return test_results
+
+def validate_model(weights_path, imgsz=640, batch=16):
+    """
+    Validate the trained car detection model (if validation data is available).
+    
+    Args:
+        weights_path: Path to model weights
+        imgsz: Image size for validation
+        batch: Batch size for validation
+    """
+    try:
+        from ultralytics import YOLO
+    except ImportError:
+        print("Error: ultralytics not installed. Install with: pip install ultralytics")
+        sys.exit(1)
+    
+    print(f"Validating car detection model with weights: {weights_path}")
+    
+    # Check if weights file exists
+    if not Path(weights_path).exists():
+        raise FileNotFoundError(f"Model weights not found: {weights_path}")
+    
+    # Load trained model
+    model = YOLO(weights_path)
+    
+    # Run validation
+    val_results = model.val(
+        data=str(DATA_YAML),
+        imgsz=imgsz,
+        batch=batch,
+        verbose=True,
+        plots=True,
+        save_json=True,
+        device=0,  # Use GPU if available
+    )
+    
+    print("Validation completed!")
+    return val_results
 
 def main():
-    parser = argparse.ArgumentParser(description='Test YOLO11 Car Detection Model')
-    parser.add_argument('--model', type=str, 
-                       default='runs/detect/kitti_car_yolo11n/weights/best.pt',
-                       help='Path to trained model weights')
-    parser.add_argument('--source', type=str,
-                       default='/home/carlier1/data/yolo_kitti_cars/val/images',
-                       help='Path to test image(s) or directory')
-    parser.add_argument('--output', type=str, default='test_results',
-                       help='Output directory for results')
-    parser.add_argument('--conf', type=float, default=0.5,
-                       help='Confidence threshold (0-1)')
-    parser.add_argument('--verbose', '-v', action='store_true',
-                       help='Enable verbose logging')
+    """Main function to run the car detection testing."""
+    parser = argparse.ArgumentParser(description='Test YOLO11 car detection model on KITTI dataset')
+    parser.add_argument('--weights', type=str, 
+                       default='runs/detect/kitti_car_yolo11x/weights/best.pt',
+                       help='Path to car detection model weights')
+    parser.add_argument('--conf', type=float, default=0.25,
+                       help='Confidence threshold for predictions')
+    parser.add_argument('--iou', type=float, default=0.7,
+                       help='IoU threshold for NMS')
+    parser.add_argument('--imgsz', type=int, default=640,
+                       help='Image size for inference')
+    parser.add_argument('--name', type=str, default='test_yolov11x_cars',
+                       help='Name for output directory')
+    parser.add_argument('--no-validate', action='store_true',
+                       help='Skip validation on validation set')
+    parser.add_argument('--no-save-txt', action='store_true',
+                       help='Do not save predictions as text files')
+    parser.add_argument('--no-save-conf', action='store_true',
+                       help='Do not save confidence scores')
     
     args = parser.parse_args()
     
-    if args.verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
-    
-    # Check if model exists
-    if not Path(args.model).exists():
-        logger.error(f"Model not found: {args.model}")
-        logger.error("Please train the model first using: python train_cars.py")
-        return
-    
-    # Check if source exists
-    if not Path(args.source).exists():
-        logger.error(f"Source not found: {args.source}")
-        logger.error("Please provide a valid image path or directory")
-        return
-    
-    print("YOLO11 Car Detection Test")
-    print("=" * 30)
-    print(f"Model: {args.model}")
-    print(f"Source: {args.source}")
-    print(f"Output: {args.output}")
-    print(f"Confidence threshold: {args.conf}")
+    print("=== YOLO11 Car Detection Testing on KITTI Dataset ===")
     print()
     
-    # Run test
-    results = test_car_detection(
-        model_path=args.model,
-        image_path=args.source,
-        output_dir=args.output,
-        conf_threshold=args.conf
-    )
-    
-    print("\nTest completed successfully!")
-    print("Check the output directory for annotated images and detection files.")
+    try:
+        # Step 1: Verify test setup
+        print("Step 1: Verifying test setup...")
+        verify_test_setup()
+        print("✓ Test setup verified!")
+        print()
+        
+        # Step 2: Run validation (if requested)
+        if not args.no_validate:
+            print("Step 2: Running validation...")
+            val_results = validate_model(args.weights)
+            print("✓ Validation completed!")
+            print()
+        
+        # Step 3: Test model
+        test_step = "Step 3" if not args.no_validate else "Step 2"
+        print(f"{test_step}: Testing model on test set...")
+        test_results = test_model(
+            weights_path=args.weights,
+            conf_threshold=args.conf,
+            iou_threshold=args.iou,
+            imgsz=args.imgsz,
+            output_name=args.name,
+            save_txt=not args.no_save_txt,
+            save_conf=not args.no_save_conf
+        )
+        print("✓ Testing completed!")
+        print()
+        
+        
+        print("=== Testing completed successfully! ===")
+        print(f"Check the 'runs/detect/{args.name}/' directory for results.")
+        
+    except Exception as e:
+        print(f"Error during testing: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
