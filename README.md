@@ -1,113 +1,70 @@
-# KITTI to YOLO Dataset Converter
+# YOLO11: Fine-Tuning YOLO for KITTI Object Detection
 
-This Python program converts KITTI dataset format to YOLO format for object detection training.
+This repository provides a suite of tools and scripts for fine-tuning YOLO models on the KITTI object detection benchmark. It covers the full workflow from dataset conversion to model training, evaluation, and cross-validation.
 
 ## Features
+- **Dataset Conversion**: Convert KITTI dataset annotations to YOLO format for seamless training.
+- **Data Splitting**: Utilities for creating training, validation, and test splits tailored for KITTI.
+- **Training Scripts**: Run training jobs for YOLO models, supporting both all-label and car-only modalities.
+- **Evaluation Tools**: Assess model performance with provided scripts and visualization outputs.
+- **K-Fold Cross Validation**: Built-in support for robust cross-validation experiments.
 
-- Converts KITTI bounding box annotations to YOLO format
-- Handles train/validation/test splits from ImageSets
-- Creates proper YOLO directory structure
-- Generates dataset.yaml configuration file
-- Supports image format conversion (PNG to JPG)
-- Comprehensive logging and error handling
+## Getting Started
+1. **Install Dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-## Dataset Structure
+2. **Convert KITTI Dataset**
+   - Convert KITTI annotations to YOLO format using:
+   ```bash
+   python src/yolo11/utils/kitti_converter.py --kitti_root /path/to/kitti --yolo_root /path/to/output_yolo --train_split 0.8
+   ```
 
-### Input (KITTI format)
-```
-kitti/
-├── testing/
-│   ├── calib/
-│   ├── image_2/
-│   └── ImageSets/
-└── training/
-    ├── calib/
-    ├── image_2/
-    ├── ImageSets/
-    ├── label/
-    ├── labels_car/
-    └── planes/
-```
+3. **Configure Data Splits**
+   - Data splits are handled automatically by the converter above. For custom splits or k-folds, use:
+   ```bash
+   python src/yolo11/utils/cross_validation.py --data_root /path/to/output_yolo --k_folds 5
+   ```
 
-### Output (YOLO format)
-```
-yolo_kitti/
-├── train/
-│   ├── images/
-│   └── labels/
-├── val/
-│   ├── images/
-│   └── labels/
-├── test/
-│   ├── images/
-│   └── labels/
-└── dataset.yaml
-```
+4. **Train YOLO Models**
+   - Submit a training job for all labels:
+   ```bash
+   bash scripts/submit_job.sh
+   ```
+   - Submit a training job for car label only:
+   ```bash
+   bash scripts/submit_job_car.sh
+   ```
 
-## Installation
+5. **Evaluate & Visualize Results**
+   - After training, analyze results and visualize metrics:
+   ```bash
+   # Open and run the notebook for training analysis
+   jupyter notebook src/yolo11/evaluation/training_csv_analysis.ipynb
+   # Or view results in runs/detect/ and runs/cross_validation/
+   ```
 
-1. Install required dependencies:
-```bash
-pip install -r requirements.txt
-```
+6. **Cross Validation**
+   - Submit a k-fold cross-validation job:
+   ```bash
+   bash scripts/submit_job_cv.sh
+   ```
+   - Or run the SLURM script directly:
+   ```bash
+   sbatch scripts/train_yolo_cv.slurm
+   ```
 
-## Usage
-
-### Command Line
-```bash
-python kitti_coco.py --kitti_root /path/to/kitti --yolo_root /path/to/output
-```
-
-### Python Script
-```python
-from kitti_coco import KittiToYoloConverter
-
-converter = KittiToYoloConverter(
-    kitti_root="/path/to/your/kitti/dataset",
-    yolo_root="/path/to/your/yolo/dataset"
-)
-converter.convert()
-```
-
-### Example
-```bash
-python convert_example.py
-```
-
-## Class Mapping
-
-The converter maps KITTI classes to YOLO class IDs:
-- Car: 0
-- Van: 1
-- Truck: 2
-- Pedestrian: 3
-- Person_sitting: 4
-- Cyclist: 5
-- Tram: 6
-- Misc: 7
-
-## Format Conversion
-
-### KITTI Label Format
-```
-class truncated occluded alpha x1 y1 x2 y2 h w l x y z rotation_y
-```
-
-### YOLO Label Format
-```
-class_id center_x center_y width height
-```
-(All coordinates normalized to 0-1 range)
-
-## Options
-
-- `--kitti_root`: Path to KITTI dataset root directory
-- `--yolo_root`: Path where YOLO dataset will be created
-- `--verbose`: Enable verbose logging
+## Directory Structure
+- `src/yolo11/` - Core source code for conversion, training, evaluation, and utilities.
+- `scripts/` - Shell and SLURM scripts for hpcc job submission and training.
+- `runs/` - Output results, including cross-validation and detection runs.
+- `docs/` - Documentation and configuration templates.
+- `tests/` - Unit tests for configuration and utilities.
 
 ## Notes
+- See `README_CONVERTER.md` and other docs for detailed usage of specific tools.
+- Example config files and templates are available in `docs/`.
 
-- Images are converted from PNG to JPG format for smaller file sizes
-- DontCare class annotations are ignored
-- If ImageSets are not available, the script creates default 80/20 train/val split
-- Image dimensions are automatically detected using PIL
+## License
+This project is maintained by JuanEstebanCarlier. See repository for license details.
