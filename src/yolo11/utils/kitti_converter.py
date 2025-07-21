@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-KITTI to YOLO Dataset Converter - Car Detection Only
+KITTI to YOLO Dataset Converter
 
-This script converts KITTI dataset format to YOLO format for object detection,
-specifically filtering for only Car bounding boxes. All other classes are ignored.
+This script converts KITTI dataset format to YOLO format for object detection.
+It handles the conversion of bounding box annotations and organizes images
+according to YOLO standards.
 
 KITTI format:
 - Labels: class truncated occluded alpha x1 y1 x2 y2 h w l x y z rotation_y
@@ -11,7 +12,6 @@ KITTI format:
 
 YOLO format:
 - Labels: class_id center_x center_y width height (normalized 0-1)
-- class_id: 0 (Car only)
 """
 
 import os
@@ -25,8 +25,8 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-class KittiCarToYoloConverter:
-    """Converts KITTI dataset format to YOLO format for Car detection only."""
+class KittiToYoloConverter:
+    """Converts KITTI dataset format to YOLO format."""
     
     def __init__(self, kitti_root: str, yolo_root: str, train_split: float = 0.8):
         """
@@ -41,9 +41,17 @@ class KittiCarToYoloConverter:
         self.yolo_root = Path(yolo_root)
         self.train_split = train_split
         
-        # Only Car class mapping - all cars get class ID 0
+        # KITTI class mapping to YOLO class IDs
         self.class_mapping = {
             'Car': 0,
+            'Van': 1, 
+            'Truck': 2,
+            'Pedestrian': 3,
+            'Person_sitting': 4,
+            'Cyclist': 5,
+            'Tram': 6,
+            'Misc': 7,
+            'DontCare': -1  # Usually ignored in YOLO
         }
         
         # Create YOLO directory structure
@@ -91,11 +99,10 @@ class KittiCarToYoloConverter:
             logger.warning(f"Testing images directory not found at {testing_images}")
         
         return splits
-    
+
     def _parse_kitti_annotation(self, annotation_path: Path, img_width: int, img_height: int) -> List[str]:
         """
         Parse KITTI annotation file and convert to YOLO format.
-        Only processes Car bounding boxes, ignoring all other classes.
         
         Args:
             annotation_path: Path to KITTI annotation file
@@ -103,10 +110,9 @@ class KittiCarToYoloConverter:
             img_height: Image height in pixels
             
         Returns:
-            List of YOLO format annotation strings for Car objects only
+            List of YOLO format annotation strings
         """
         yolo_annotations = []
-        car_count = 0
         
         if not annotation_path.exists():
             return yolo_annotations
@@ -119,17 +125,18 @@ class KittiCarToYoloConverter:
                 
                 class_name = parts[0]
                 
-                # Only process Car class - skip all others
-                if class_name != 'Car':
+                # Skip DontCare class
+                if class_name == 'DontCare':
+                    continue
+                
+                # Get class ID
+                class_id = self.class_mapping.get(class_name, -1)
+                if class_id == -1:
+                    logger.warning(f"Unknown class: {class_name}")
                     continue
                 
                 # Parse bounding box coordinates (x1, y1, x2, y2)
                 x1, y1, x2, y2 = map(float, parts[4:8])
-                
-                # Validate bounding box
-                if x2 <= x1 or y2 <= y1:
-                    logger.warning(f"Invalid bounding box in {annotation_path}: {x1}, {y1}, {x2}, {y2}")
-                    continue
                 
                 # Convert to YOLO format (center_x, center_y, width, height) normalized
                 center_x = (x1 + x2) / 2.0 / img_width
@@ -143,19 +150,8 @@ class KittiCarToYoloConverter:
                 width = max(0, min(1, width))
                 height = max(0, min(1, height))
                 
-                # Skip very small bounding boxes (likely annotation errors)
-                #if width < 0.01 or height < 0.01:
-                #    logger.warning(f"Skipping very small bounding box: {width:.4f} x {height:.4f}")
-                #    continue
-
-                # Car class ID is always 0 in our single-class system
-                class_id = 0
                 yolo_annotation = f"{class_id} {center_x:.6f} {center_y:.6f} {width:.6f} {height:.6f}"
                 yolo_annotations.append(yolo_annotation)
-                car_count += 1
-        
-        if car_count > 0:
-            logger.debug(f"Found {car_count} car(s) in {annotation_path}")
         
         return yolo_annotations
     
@@ -198,8 +194,6 @@ class KittiCarToYoloConverter:
         labels_dst = self.yolo_root / split_name / 'labels'
         
         converted_count = 0
-        images_with_cars = 0
-        total_cars = 0
         
         for image_id in image_ids:
             # Copy image
@@ -233,7 +227,7 @@ class KittiCarToYoloConverter:
                 # Get image dimensions
                 img_width, img_height = self._get_image_dimensions(image_dst_path)
                 
-                # Convert annotations (Car only)
+                # Convert annotations
                 yolo_annotations = self._parse_kitti_annotation(
                     annotation_src_path, img_width, img_height
                 )
@@ -241,11 +235,6 @@ class KittiCarToYoloConverter:
                 # Write YOLO annotations
                 with open(annotation_dst_path, 'w') as f:
                     f.write('\n'.join(yolo_annotations))
-                
-                # Track statistics
-                if yolo_annotations:
-                    images_with_cars += 1
-                    total_cars += len(yolo_annotations)
             
             converted_count += 1
             
@@ -253,12 +242,12 @@ class KittiCarToYoloConverter:
                 logger.info(f"Converted {converted_count}/{len(image_ids)} samples")
         
         logger.info(f"Completed {split_name} split: {converted_count} samples converted")
-        if not is_test:
-            logger.info(f"Car statistics for {split_name}: {images_with_cars} images with cars, {total_cars} total car instances")
     
     def create_yaml_config(self):
-        """Create YOLO dataset configuration file for Car detection."""
-        yaml_content = f"""# YOLO dataset configuration - Car Detection Only
+        """Create YOLO dataset configuration file."""
+        class_names = [k for k, v in self.class_mapping.items() if v != -1]
+        
+        yaml_content = f"""# YOLO dataset configuration
 # Converted from KITTI dataset
 
 path: {self.yolo_root.absolute()}  # dataset root dir
@@ -266,13 +255,14 @@ train: train/images  # train images (relative to 'path')
 val: val/images      # val images (relative to 'path') 
 test: test/images    # test images (relative to 'path')
 
-# Classes (Car only)
+# Classes
 names:
-  0: Car
-
-# Number of classes
-nc: 1
 """
+        
+        for i, class_name in enumerate(class_names):
+            yaml_content += f"  {i}: {class_name}\n"
+        
+        yaml_content += f"\n# Number of classes\nnc: {len(class_names)}\n"
         
         yaml_path = self.yolo_root / 'dataset.yaml'
         with open(yaml_path, 'w') as f:
@@ -281,8 +271,8 @@ nc: 1
         logger.info(f"Created dataset configuration: {yaml_path}")
     
     def convert(self):
-        """Convert the entire KITTI dataset to YOLO format (Car detection only)."""
-        logger.info("Starting KITTI to YOLO conversion (Car detection only)")
+        """Convert the entire KITTI dataset to YOLO format."""
+        logger.info("Starting KITTI to YOLO conversion")
         logger.info(f"Train/validation split ratio: {self.train_split:.1%} train, {1-self.train_split:.1%} validation")
         
         # Create splits from available data
@@ -299,15 +289,15 @@ nc: 1
         # Create YAML configuration
         self.create_yaml_config()
         
-        logger.info("KITTI to YOLO conversion (Car detection only) completed successfully!")
+        logger.info("KITTI to YOLO conversion completed successfully!")
 
 
 def main():
     """Main function to run the converter."""
-    parser = argparse.ArgumentParser(description='Convert KITTI dataset to YOLO format (Car detection only)')
-    parser.add_argument('--kitti_root', type=str, default='/home/carlier1/data/kitti',
+    parser = argparse.ArgumentParser(description='Convert KITTI dataset to YOLO format')
+    parser.add_argument('--kitti_root', type=str, default='./data/kitti',
                        help='Path to KITTI dataset root directory')
-    parser.add_argument('--yolo_root', type=str, default='/home/carlier1/data/yolo_kitti_cars',
+    parser.add_argument('--yolo_root', type=str, default='./data/yolo_kitti',
                        help='Path where YOLO dataset will be created')
     parser.add_argument('--train_split', type=float, default=0.8,
                        help='Percentage of training data to use for training (default: 0.8)')
@@ -330,7 +320,7 @@ def main():
         return
     
     # Create converter and run conversion
-    converter = KittiCarToYoloConverter(args.kitti_root, args.yolo_root, args.train_split)
+    converter = KittiToYoloConverter(args.kitti_root, args.yolo_root, args.train_split)
     converter.convert()
 
 

@@ -9,12 +9,16 @@ import numpy as np
 from pathlib import Path
 import argparse
 import logging
+from src.yolo11.utils.config_utils import get_config
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def test_car_detection(model_path, image_path, output_dir="results", conf_threshold=0.5):
+# Get configuration
+config = get_config()
+
+def test_car_detection(model_path, image_path, output_dir=None, conf_threshold=0.5):
     """
     Test car detection on a single image or directory of images.
     
@@ -24,6 +28,9 @@ def test_car_detection(model_path, image_path, output_dir="results", conf_thresh
         output_dir: Directory to save results
         conf_threshold: Confidence threshold for detections
     """
+    
+    if output_dir is None:
+        output_dir = config.get('results_dir', 'results')
     
     # Load the trained model
     logger.info(f"Loading model: {model_path}")
@@ -69,7 +76,7 @@ def main():
                        default='runs/detect/kitti_car_yolo11n/weights/best.pt',
                        help='Path to trained model weights')
     parser.add_argument('--source', type=str,
-                       default='/home/carlier1/data/yolo_kitti_cars/val/images',
+                       default='./data/yolo_kitti_cars/val/images',
                        help='Path to test image(s) or directory')
     parser.add_argument('--output', type=str, default='test_results',
                        help='Output directory for results')

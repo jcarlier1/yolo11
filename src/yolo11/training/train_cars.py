@@ -7,20 +7,25 @@ from ultralytics import YOLO
 import logging
 import os
 from pathlib import Path
+from src.yolo11.utils.config_utils import get_config, get_dataset_config
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Get configuration
+config = get_config()
+dataset_paths = get_dataset_config('car')
+
 def main():
     # Configuration
-    dataset_yaml = "/home/carlier1/data/yolo_kitti_cars/dataset.yaml"
-    model_size = "yolo11x.pt"  # Use x model
-    epochs = 500
-    imgsz = 640
-    batch_size = -1
-    project_name = "runs/detect"
-    experiment_name = "kitti_car_yolo11x"
+    dataset_yaml = str(dataset_paths['data_yaml'])
+    model_size = config.get('default_model', 'yolo11s.pt')
+    epochs = config.get('default_epochs', 500)
+    imgsz = config.get('default_imgsz', 640)
+    batch_size = config.get('default_batch_size', -1)
+    project_name = config.get('project_name', 'runs/detect')
+    experiment_name = "kitti_car_yolo11s"
     
     print("YOLO11 Car Detection Training")
     print("=" * 40)
@@ -85,7 +90,7 @@ def main():
     # Test on test dataset
     logger.info("Running test dataset...")
     test_results = model.predict(
-        source=f"/home/carlier1/data/yolo_kitti_cars/test/images",
+        source=str(dataset_paths['test_images']),
         save=True,
         save_txt=True,
         save_conf=True,
@@ -113,7 +118,7 @@ def main():
     # Sample inference on validation images for comparison
     logger.info("Running sample inference on validation images...")
     val_results = model.predict(
-        source=f"/home/carlier1/data/yolo_kitti_cars/val/images",
+        source=str(dataset_paths['val_images']),
         save=True,
         save_txt=True,
         project=project_name,

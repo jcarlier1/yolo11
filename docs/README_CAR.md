@@ -122,8 +122,8 @@ pip install -r requirements.txt
 ## Configuration
 
 ### Default Paths
-- KITTI dataset: `/home/carlier1/data/kitti`
-- Output dataset: `/home/carlier1/data/yolo_kitti_cars`
+- KITTI dataset: `./data/kitti`
+- Output dataset: `./data/yolo_kitti_cars`
 - Model weights: `runs/detect/kitti_car_yolo11n/weights/best.pt`
 
 ### Customization

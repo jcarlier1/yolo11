@@ -5,6 +5,9 @@ numpy>=1.19.0
 pillow>=8.0.0
 pyyaml>=6.0
 
+# Machine learning utilities
+scikit-learn>=1.0.0
+
 # Data analysis and visualization (for Jupyter notebook)
 pandas>=1.3.0
 matplotlib>=3.5.0

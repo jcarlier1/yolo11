@@ -10,9 +10,9 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def main():
-    # Define paths
-    kitti_root = "/home/carlier1/data/kitti"
-    yolo_root = "/home/carlier1/data/yolo_kitti_cars"
+    # Define paths - UPDATE THESE TO YOUR ACTUAL PATHS
+    kitti_root = "./data/kitti"  # Update this path
+    yolo_root = "./data/yolo_kitti_cars"  # Update this path
     
     # Define train/validation split ratio (80% train, 20% validation)
     train_split = 0.8

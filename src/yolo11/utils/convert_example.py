@@ -10,9 +10,9 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def main():
-    # Define paths
-    kitti_root = "/home/carlier1/data/kitti"
-    yolo_root = "/home/carlier1/data/yolo_kitti"
+    # Define paths - UPDATE THESE TO YOUR ACTUAL PATHS
+    kitti_root = "./data/kitti"  # Update this path
+    yolo_root = "./data/yolo_kitti"  # Update this path
     
     print("KITTI to YOLO Dataset Converter")
     print("=" * 40)

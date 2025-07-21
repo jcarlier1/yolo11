@@ -63,8 +63,8 @@ python kitti_coco.py --kitti_root /path/to/kitti --yolo_root /path/to/output
 from kitti_coco import KittiToYoloConverter
 
 converter = KittiToYoloConverter(
-    kitti_root="/home/carlier1/data/kitti",
-    yolo_root="/home/carlier1/data/yolo_kitti"
+    kitti_root="/path/to/your/kitti/dataset",
+    yolo_root="/path/to/your/yolo/dataset"
 )
 converter.convert()
 ```

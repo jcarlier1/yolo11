@@ -8,53 +8,37 @@ import shutil
 import random
 from PIL import Image
 import yaml
+from src.yolo11.utils.config_utils import get_config, get_dataset_config, verify_paths
 
-# ------------------------------------------------------------------------------------
-# 0. Fixed paths
-# ------------------------------------------------------------------------------------
-
-YOLO_ROOT    = Path("/home/carlier1/data/yolo_kitti")
-DATA_YAML    = YOLO_ROOT / "dataset.yaml"  # dataset configuration file
-
-# YOLO dataset structure
-TRAIN_DIR    = YOLO_ROOT / "train"
-VAL_DIR      = YOLO_ROOT / "val" 
-TEST_DIR     = YOLO_ROOT / "test"
-
-# Images and labels directories
-TRAIN_IMAGES = TRAIN_DIR / "images"
-TRAIN_LABELS = TRAIN_DIR / "labels"
-VAL_IMAGES   = VAL_DIR / "images"
-VAL_LABELS   = VAL_DIR / "labels"
-TEST_IMAGES  = TEST_DIR / "images"
-TEST_LABELS  = TEST_DIR / "labels"
+# Get configuration
+config = get_config()
+dataset_paths = get_dataset_config('default')
 
 def verify_dataset_structure():
     """Verify that the YOLO dataset structure exists and is valid."""
     print("Verifying dataset structure...")
     
-    # Check main directories
-    required_dirs = [YOLO_ROOT, TRAIN_DIR, VAL_DIR, TEST_DIR, 
-                    TRAIN_IMAGES, TRAIN_LABELS, VAL_IMAGES, VAL_LABELS, 
-                    TEST_IMAGES, TEST_LABELS]
+    # Check main directories using config
+    required_paths = ['yolo_root', 'train_dir', 'val_dir', 'test_dir', 
+                     'train_images', 'train_labels', 'val_images', 'val_labels', 
+                     'test_images', 'test_labels']
     
-    for dir_path in required_dirs:
-        if not dir_path.exists():
-            raise FileNotFoundError(f"Required directory not found: {dir_path}")
-        print(f"✓ {dir_path}")
+    if not verify_paths(required_paths):
+        raise FileNotFoundError("Required directories not found")
     
     # Check dataset.yaml
-    if not DATA_YAML.exists():
-        raise FileNotFoundError(f"Dataset configuration not found: {DATA_YAML}")
-    print(f"✓ {DATA_YAML}")
+    data_yaml = dataset_paths['data_yaml']
+    if not data_yaml.exists():
+        raise FileNotFoundError(f"Dataset configuration not found: {data_yaml}")
+    print(f"✓ {data_yaml}")
     
     # Count files in each split
-    train_images = len(list(TRAIN_IMAGES.glob("*")))
-    train_labels = len(list(TRAIN_LABELS.glob("*.txt")))
-    val_images = len(list(VAL_IMAGES.glob("*")))
-    val_labels = len(list(VAL_LABELS.glob("*.txt")))
-    test_images = len(list(TEST_IMAGES.glob("*")))
-    test_labels = len(list(TEST_LABELS.glob("*.txt")))
+    train_images = len(list(dataset_paths['train_images'].glob("*")))
+    train_labels = len(list(dataset_paths['train_labels'].glob("*.txt")))
+    val_images = len(list(dataset_paths['val_images'].glob("*")))
+    val_labels = len(list(dataset_paths['val_labels'].glob("*.txt")))
+    test_images = len(list(dataset_paths['test_images'].glob("*")))
+    test_labels = len(list(dataset_paths['test_labels'].glob("*.txt")))
     
     print(f"\nDataset Summary:")
     print(f"  Train: {train_images} images, {train_labels} labels")
@@ -62,13 +46,13 @@ def verify_dataset_structure():
     print(f"  Test:  {test_images} images, {test_labels} labels")
     
     # Verify dataset.yaml content
-    with open(DATA_YAML, 'r') as f:
-        config = yaml.safe_load(f)
+    with open(data_yaml, 'r') as f:
+        config_data = yaml.safe_load(f)
     
     print(f"\nDataset Configuration:")
-    print(f"  Path: {config.get('path', 'Not specified')}")
-    print(f"  Classes: {len(config.get('names', {}))}")
-    print(f"  Class names: {list(config.get('names', {}).values())}")
+    print(f"  Path: {config_data.get('path', 'Not specified')}")
+    print(f"  Classes: {len(config_data.get('names', {}))}")
+    print(f"  Class names: {list(config_data.get('names', {}).values())}")
     
     return True
 
@@ -76,27 +60,27 @@ def train_model():
     """Train YOLO model with configuration."""
     from ultralytics import YOLO
 
-    print(f"Starting YOLO training with dataset: {DATA_YAML}")
+    print(f"Starting YOLO training with dataset: {dataset_paths['data_yaml']}")
     
-    # Load pretrained model (using YOLOv11x)
-    model = YOLO("yolo11x.pt")
+    # Load pretrained model (using YOLOv11s)
+    model = YOLO(config.get('default_model', 'yolo11s.pt'))
     
-    # Training configuration
+    # Training configuration optimized for single NVIDIA H200 GPU (144GB VRAM)
     results = model.train(
-        data=str(DATA_YAML),        # Dataset configuration
-        epochs=500,                 # Maximum epochs
+        data=str(dataset_paths['data_yaml']),        # Dataset configuration
+        epochs=config.get('default_epochs', 500),   # Maximum epochs
         patience=50,                # Early stopping patience
-        imgsz=640,                  # Image size (standard for YOLO)
-        batch=-1,                   # Auto-batch size detection
-        device=0,                   # First GPU (or CPU if no GPU)
-        name="kitti_yolo11x",       # Experiment name
+        imgsz=config.get('default_imgsz', 640),     # Image size
+        batch=config.get('default_batch_size', 64), # Large batch size for H200 GPU
+        device=0,                   # Use first GPU only
+        name="kitti_yolo11s",       # Experiment name
         save_period=10,             # Save checkpoint every 10 epochs
         val=True,                   # Enable validation
         plots=True,                 # Generate training plots
         verbose=True,               # Verbose output
         exist_ok=True,              # Allow overwriting existing experiment
-        # Additional parameters for better training
-        lr0=0.001,                  # Initial learning rate
+        # Optimized parameters for single GPU training
+        lr0=0.001,                  # Standard learning rate for single GPU
         optimizer='AdamW',          # Use AdamW optimizer
         cos_lr=True,                # Cosine learning rate scheduler
         warmup_epochs=3,            # Warmup epochs
@@ -105,14 +89,20 @@ def train_model():
         box=7.5,                    # Box loss weight
         cls=0.5,                    # Classification loss weight
         dfl=1.5,                    # DFL loss weight
-        amp=True,                   # Automatic Mixed Precision
-        cache=True,                 # Cache images for faster training
-        workers=8,                  # Number of dataloader workers
+        amp=True,                   # Automatic Mixed Precision (crucial for H200)
+        cache='ram',                # Cache entire dataset in RAM (H200 has lots of memory)
+        workers=8,                  # Reasonable number of workers for single GPU
+        close_mosaic=20,            # Close mosaic augmentation in last 20 epochs
+        # Additional optimizations for single GPU training
+        rect=True,                  # Rectangular training for efficiency
+        single_cls=False,           # Multi-class training
+        deterministic=False,        # Allow non-deterministic for speed
+        seed=42,                    # Set seed for reproducibility
     )
     
     print(f"Training completed successfully!")
-    print(f"Best weights saved at: runs/detect/kitti_yolo11x/weights/best.pt")
-    print(f"Last weights saved at: runs/detect/kitti_yolo11x/weights/last.pt")
+    print(f"Best weights saved at: runs/detect/kitti_yolo11s/weights/best.pt")
+    print(f"Last weights saved at: runs/detect/kitti_yolo11s/weights/last.pt")
     
     # Print training summary
     if hasattr(results, 'results_dict'):
@@ -125,7 +115,7 @@ def train_model():
     
     return results
 
-def validate_model(weights_path="runs/detect/kitti_yolo11x/weights/best.pt"):
+def validate_model(weights_path="runs/detect/kitti_yolo11s/weights/best.pt"):
     """Validate the trained model."""
     from ultralytics import YOLO
     
@@ -136,7 +126,7 @@ def validate_model(weights_path="runs/detect/kitti_yolo11x/weights/best.pt"):
     
     # Run validation
     val_results = model.val(
-        data=str(DATA_YAML),
+        data=str(dataset_paths['data_yaml']),
         imgsz=640,
         batch=16,
         verbose=True,
@@ -147,7 +137,7 @@ def validate_model(weights_path="runs/detect/kitti_yolo11x/weights/best.pt"):
     print("Validation completed!")
     return val_results
 
-def test_model(weights_path="runs/detect/kitti_yolo11x/weights/best.pt"):
+def test_model(weights_path="runs/detect/kitti_yolo11s/weights/best.pt"):
     """Test the trained model on test set."""
     from ultralytics import YOLO
     
@@ -158,20 +148,20 @@ def test_model(weights_path="runs/detect/kitti_yolo11x/weights/best.pt"):
     
     # Run prediction on test set
     test_results = model.predict(
-        source=str(TEST_IMAGES),
+        source=str(dataset_paths['test_images']),
         imgsz=640,
         conf=0.25,
         iou=0.7,
         save=True,
         save_txt=True,
         save_conf=True,
-        project="runs/detect",
-        name="kitti_yolo11x_test",
+        project=config.get('runs_dir', 'runs') + "/detect",
+        name="kitti_yolo11s_test",
         exist_ok=True,
     )
     
     print("Testing completed!")
-    print(f"Results saved at: runs/detect/kitti_yolo11x_test/")
+    print(f"Results saved at: runs/detect/kitti_yolo11s_test/")
     return test_results
 
 # ------------------------------------------------------------------------------------

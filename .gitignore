@@ -1,6 +1,14 @@
 # YOLO Training Results and Runs
 runs/
 
+# Local configuration (should not be committed)
+local_config.yaml
+*.local.yaml
+.env.local
+
+# SLURM output
+slurm_outputs/
+
 # YOLO Pretrained Models
 *.pt
 yolo*.pt

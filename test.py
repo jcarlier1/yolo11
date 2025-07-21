@@ -7,51 +7,43 @@ from pathlib import Path
 import argparse
 import yaml
 import sys
+from src.yolo11.utils.config_utils import get_config, get_dataset_config, verify_paths
 
-# ------------------------------------------------------------------------------------
-# 0. Fixed paths
-# ------------------------------------------------------------------------------------
-
-YOLO_ROOT    = Path("/home/carlier1/data/yolo_kitti")
-DATA_YAML    = YOLO_ROOT / "dataset.yaml"  # dataset configuration file
-
-# YOLO dataset structure
-TEST_DIR     = YOLO_ROOT / "test"
-TEST_IMAGES  = TEST_DIR / "images"
-TEST_LABELS  = TEST_DIR / "labels"
+# Get configuration
+config = get_config()
+dataset_paths = get_dataset_config('default')
 
 def verify_test_setup():
     """Verify that the test setup is valid."""
     print("Verifying test setup...")
     
-    # Check test directories
-    required_dirs = [YOLO_ROOT, TEST_DIR, TEST_IMAGES]
+    # Check test directories using config
+    required_paths = ['yolo_root', 'test_dir', 'test_images']
     
-    for dir_path in required_dirs:
-        if not dir_path.exists():
-            raise FileNotFoundError(f"Required directory not found: {dir_path}")
-        print(f"✓ {dir_path}")
+    if not verify_paths(required_paths):
+        raise FileNotFoundError("Required directories not found")
     
     # Check dataset.yaml
-    if not DATA_YAML.exists():
-        raise FileNotFoundError(f"Dataset configuration not found: {DATA_YAML}")
-    print(f"✓ {DATA_YAML}")
+    data_yaml = dataset_paths['data_yaml']
+    if not data_yaml.exists():
+        raise FileNotFoundError(f"Dataset configuration not found: {data_yaml}")
+    print(f"✓ {data_yaml}")
     
     # Count test files
-    test_images = len(list(TEST_IMAGES.glob("*")))
-    test_labels = len(list(TEST_LABELS.glob("*.txt"))) if TEST_LABELS.exists() else 0
+    test_images = len(list(dataset_paths['test_images'].glob("*")))
+    test_labels = len(list(dataset_paths['test_labels'].glob("*.txt"))) if dataset_paths['test_labels'].exists() else 0
     
     print(f"\nTest Dataset Summary:")
     print(f"  Test: {test_images} images, {test_labels} labels")
     
     # Verify dataset.yaml content
-    with open(DATA_YAML, 'r') as f:
-        config = yaml.safe_load(f)
+    with open(data_yaml, 'r') as f:
+        config_data = yaml.safe_load(f)
     
     print(f"\nDataset Configuration:")
-    print(f"  Path: {config.get('path', 'Not specified')}")
-    print(f"  Classes: {len(config.get('names', {}))}")
-    print(f"  Class names: {list(config.get('names', {}).values())}")
+    print(f"  Path: {config_data.get('path', 'Not specified')}")
+    print(f"  Classes: {len(config_data.get('names', {}))}")
+    print(f"  Class names: {list(config_data.get('names', {}).values())}")
     
     return True
 
@@ -93,14 +85,14 @@ def test_model(weights_path, conf_threshold=0.25, iou_threshold=0.7, imgsz=640,
     
     # Run prediction on test set
     test_results = model.predict(
-        source=str(TEST_IMAGES),
+        source=str(dataset_paths['test_images']),
         imgsz=imgsz,
         conf=conf_threshold,
         iou=iou_threshold,
         save=True,
         save_txt=save_txt,
         save_conf=save_conf,
-        project="runs/detect",
+        project=config.get('runs_dir', 'runs') + "/detect",
         name=output_name,
         exist_ok=True,
         verbose=True,
@@ -151,7 +143,7 @@ def validate_model(weights_path, imgsz=640, batch=16):
     
     # Run validation
     val_results = model.val(
-        data=str(DATA_YAML),
+        data=str(dataset_paths['data_yaml']),
         imgsz=imgsz,
         batch=batch,
         verbose=True,
@@ -167,7 +159,7 @@ def main():
     """Main function to run the testing."""
     parser = argparse.ArgumentParser(description='Test YOLO model on KITTI dataset')
     parser.add_argument('--weights', type=str, 
-                       default='models/best11x.pt',
+                       default=config.get('models_dir', 'models') + '/best11x.pt',
                        help='Path to model weights')
     parser.add_argument('--conf', type=float, default=0.25,
                        help='Confidence threshold for predictions')
@@ -219,7 +211,7 @@ def main():
         print()'''
         
         print("=== Testing completed successfully! ===")
-        print(f"Check the 'runs/detect/{args.name}/' directory for results.")
+        print(f"Check the '{config.get('runs_dir', 'runs')}/detect/{args.name}/' directory for results.")
         
     except Exception as e:
         print(f"Error during testing: {e}")

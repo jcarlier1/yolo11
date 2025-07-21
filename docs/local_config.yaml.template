@@ -1,0 +1,39 @@
+# Template for local configuration
+# Copy this file to local_config.yaml and customize the paths for your environment
+# This file should NOT be committed to git (it's in .gitignore)
+
+# Dataset paths - UPDATE THESE TO YOUR ACTUAL PATHS
+dataset_root: "/path/to/your/yolo_kitti"
+car_dataset_root: "/path/to/your/yolo_kitti_cars"
+
+# Model paths (relative to project root)
+models_dir: "models"
+weights_dir: "weights"
+
+# Output directories (relative to project root)
+results_dir: "results"
+runs_dir: "runs"
+cv_results_dir: "runs/cross_validation"
+
+# Default model settings
+default_model: "yolo11s.pt"
+default_epochs: 500
+default_imgsz: 640
+default_batch_size: -1  # -1 for auto batch size
+
+# Training settings
+project_name: "runs/detect"
+
+# Example configurations for different environments:
+#
+# For local development:
+# dataset_root: "./data/yolo_kitti"
+# car_dataset_root: "./data/yolo_kitti_cars"
+#
+# For HPCC (MSU):
+# dataset_root: "/mnt/home/username/data/yolo_kitti"
+# car_dataset_root: "/mnt/home/username/data/yolo_kitti_cars"
+#
+# For other HPC systems:
+# dataset_root: "/scratch/username/data/yolo_kitti"
+# car_dataset_root: "/scratch/username/data/yolo_kitti_cars"

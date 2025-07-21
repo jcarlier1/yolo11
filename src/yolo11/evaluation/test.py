@@ -1,66 +1,59 @@
 #!/usr/bin/env python
 """
-Test YOLOv10 model on KITTI dataset using pre-trained model
+Test YOLO v11x model on KITTI dataset
 """
 
 from pathlib import Path
 import argparse
 import yaml
 import sys
+from src.yolo11.utils.config_utils import get_config, get_dataset_config, verify_paths
 
-# ------------------------------------------------------------------------------------
-# 0. Fixed paths
-# ------------------------------------------------------------------------------------
-
-YOLO_ROOT    = Path("/home/carlier1/data/yolo_kitti")
-DATA_YAML    = YOLO_ROOT / "dataset.yaml"  # dataset configuration file
-
-# YOLO dataset structure
-TEST_DIR     = YOLO_ROOT / "test"
-TEST_IMAGES  = TEST_DIR / "images"
-TEST_LABELS  = TEST_DIR / "labels"
+# Get configuration
+config = get_config()
+dataset_paths = get_dataset_config('default')
 
 def verify_test_setup():
     """Verify that the test setup is valid."""
     print("Verifying test setup...")
     
-    # Check test directories
-    required_dirs = [YOLO_ROOT, TEST_DIR, TEST_IMAGES]
+    # Check test directories using config
+    required_paths = ['yolo_root', 'test_dir', 'test_images']
     
-    for dir_path in required_dirs:
-        if not dir_path.exists():
-            raise FileNotFoundError(f"Required directory not found: {dir_path}")
-        print(f"✓ {dir_path}")
+    if not verify_paths(required_paths):
+        raise FileNotFoundError("Required directories not found")
     
     # Check dataset.yaml
-    if not DATA_YAML.exists():
-        raise FileNotFoundError(f"Dataset configuration not found: {DATA_YAML}")
-    print(f"✓ {DATA_YAML}")
+    data_yaml = dataset_paths['data_yaml']
+    if not data_yaml.exists():
+        raise FileNotFoundError(f"Dataset configuration not found: {data_yaml}")
+    print(f"✓ {data_yaml}")
     
     # Count test files
-    test_images = len(list(TEST_IMAGES.glob("*")))
-    test_labels = len(list(TEST_LABELS.glob("*.txt"))) if TEST_LABELS.exists() else 0
+    test_images = len(list(dataset_paths['test_images'].glob("*")))
+    test_labels = len(list(dataset_paths['test_labels'].glob("*.txt"))) if dataset_paths['test_labels'].exists() else 0
     
     print(f"\nTest Dataset Summary:")
     print(f"  Test: {test_images} images, {test_labels} labels")
     
     # Verify dataset.yaml content
-    with open(DATA_YAML, 'r') as f:
-        config = yaml.safe_load(f)
+    with open(data_yaml, 'r') as f:
+        config_data = yaml.safe_load(f)
     
     print(f"\nDataset Configuration:")
-    print(f"  Path: {config.get('path', 'Not specified')}")
-    print(f"  Classes: {len(config.get('names', {}))}")
-    print(f"  Class names: {list(config.get('names', {}).values())}")
+    print(f"  Path: {config_data.get('path', 'Not specified')}")
+    print(f"  Classes: {len(config_data.get('names', {}))}")
+    print(f"  Class names: {list(config_data.get('names', {}).values())}")
     
     return True
 
-def test_model(conf_threshold=0.25, iou_threshold=0.7, imgsz=640, 
-               output_name="test_yolov10n", save_txt=True, save_conf=True):
+def test_model(weights_path, conf_threshold=0.25, iou_threshold=0.7, imgsz=640, 
+               output_name="test_yolov11x", save_txt=True, save_conf=True):
     """
-    Test the pre-trained YOLOv10 model on test set.
+    Test the trained model on test set.
     
     Args:
+        weights_path: Path to model weights
         conf_threshold: Confidence threshold for predictions
         iou_threshold: IoU threshold for NMS
         imgsz: Image size for inference
@@ -74,7 +67,7 @@ def test_model(conf_threshold=0.25, iou_threshold=0.7, imgsz=640,
         print("Error: ultralytics not installed. Install with: pip install ultralytics")
         sys.exit(1)
     
-    print(f"Testing pre-trained YOLOv10 model")
+    print(f"Testing model with weights: {weights_path}")
     print(f"Configuration:")
     print(f"  - Confidence threshold: {conf_threshold}")
     print(f"  - IoU threshold: {iou_threshold}")
@@ -83,25 +76,23 @@ def test_model(conf_threshold=0.25, iou_threshold=0.7, imgsz=640,
     print(f"  - Save predictions: {save_txt}")
     print(f"  - Save confidence: {save_conf}")
     
-    # Load pre-trained model from local PyTorch file
-    print("Loading pre-trained YOLOv10 model from local .pt file...")
-    try:
-        model_path = "yolov10n_finetuned_kitti.pt"
-        model = YOLO(model_path, task='detect')
-    except Exception as e:
-        print(f"Failed to load the model: {e}")
-        sys.exit(1)
+    # Check if weights file exists
+    if not Path(weights_path).exists():
+        raise FileNotFoundError(f"Model weights not found: {weights_path}")
+    
+    # Load trained model
+    model = YOLO(weights_path)
     
     # Run prediction on test set
     test_results = model.predict(
-        source=str(TEST_IMAGES),
+        source=str(dataset_paths['test_images']),
         imgsz=imgsz,
         conf=conf_threshold,
         iou=iou_threshold,
         save=True,
         save_txt=save_txt,
         save_conf=save_conf,
-        project="runs/detect",
+        project=config.get('runs_dir', 'runs') + "/detect",
         name=output_name,
         exist_ok=True,
         verbose=True,
@@ -126,11 +117,12 @@ def test_model(conf_threshold=0.25, iou_threshold=0.7, imgsz=640,
     
     return test_results
 
-def validate_model(imgsz=640, batch=16):
+def validate_model(weights_path, imgsz=640, batch=16):
     """
-    Validate the pre-trained YOLOv10 model from Hugging Face.
+    Validate the trained model (if validation data is available).
     
     Args:
+        weights_path: Path to model weights
         imgsz: Image size for validation
         batch: Batch size for validation
     """
@@ -140,18 +132,18 @@ def validate_model(imgsz=640, batch=16):
         print("Error: ultralytics not installed. Install with: pip install ultralytics")
         sys.exit(1)
     
-    # Load pre-trained model from local PyTorch file
-    print("Loading pre-trained YOLOv10 model from local .pt file...")
-    try:
-        model_path = "yolov10n_finetuned_kitti.pt"
-        model = YOLO(model_path, task='detect')
-    except Exception as e:
-        print(f"Failed to load the model: {e}")
-        sys.exit(1)
+    print(f"Validating model with weights: {weights_path}")
+    
+    # Check if weights file exists
+    if not Path(weights_path).exists():
+        raise FileNotFoundError(f"Model weights not found: {weights_path}")
+    
+    # Load trained model
+    model = YOLO(weights_path)
     
     # Run validation
     val_results = model.val(
-        data=str(DATA_YAML),
+        data=str(dataset_paths['data_yaml']),
         imgsz=imgsz,
         batch=batch,
         verbose=True,
@@ -165,14 +157,17 @@ def validate_model(imgsz=640, batch=16):
 
 def main():
     """Main function to run the testing."""
-    parser = argparse.ArgumentParser(description='Test YOLOv10 model on KITTI dataset')
+    parser = argparse.ArgumentParser(description='Test YOLO model on KITTI dataset')
+    parser.add_argument('--weights', type=str, 
+                       default=config.get('models_dir', 'models') + '/best11x.pt',
+                       help='Path to model weights')
     parser.add_argument('--conf', type=float, default=0.25,
                        help='Confidence threshold for predictions')
     parser.add_argument('--iou', type=float, default=0.7,
                        help='IoU threshold for NMS')
     parser.add_argument('--imgsz', type=int, default=640,
                        help='Image size for inference')
-    parser.add_argument('--name', type=str, default='test_yolov10n',
+    parser.add_argument('--name', type=str, default='test_yolov11x',
                        help='Name for output directory')
     parser.add_argument('--no-validate', action='store_true',
                        help='Skip validation on validation set')
@@ -196,14 +191,15 @@ def main():
         # Step 2: Run validation (if requested)
         if not args.no_validate:
             print("Step 2: Running validation...")
-            val_results = validate_model()
+            val_results = validate_model(args.weights)
             print("✓ Validation completed!")
             print()
         
         # Step 3: Test model
-        test_step = "Step 3" if not args.no_validate else "Step 2"
+        '''test_step = "Step 3" if not args.no_validate else "Step 2"
         print(f"{test_step}: Testing model on test set...")
         test_results = test_model(
+            weights_path=args.weights,
             conf_threshold=args.conf,
             iou_threshold=args.iou,
             imgsz=args.imgsz,
@@ -212,11 +208,10 @@ def main():
             save_conf=not args.no_save_conf
         )
         print("✓ Testing completed!")
-        print()
-
+        print()'''
         
         print("=== Testing completed successfully! ===")
-        print(f"Check the 'runs/detect/{args.name}/' directory for results.")
+        print(f"Check the '{config.get('runs_dir', 'runs')}/detect/{args.name}/' directory for results.")
         
     except Exception as e:
         print(f"Error during testing: {e}")
