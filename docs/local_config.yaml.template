@@ -23,6 +23,7 @@ default_batch_size: -1  # -1 for auto batch size
 
 # Training settings
 project_name: "runs/detect"
+experiment_name: "your_experiment_name"
 
 # Example configurations for different environments:
 #

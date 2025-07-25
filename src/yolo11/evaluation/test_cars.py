@@ -170,19 +170,23 @@ def main():
     """Main function to run the car detection testing."""
     parser = argparse.ArgumentParser(description='Test YOLO11 car detection model on KITTI dataset')
     parser.add_argument('--weights', type=str, 
-                       default='runs/detect/kitti_car_yolo11x/weights/best.pt',
+                       default=config.get('default_test_weights', config.get('models_dir', 'models') + '/best.pt'),
                        help='Path to car detection model weights')
-    parser.add_argument('--conf', type=float, default=0.25,
+    parser.add_argument('--conf', type=float, 
+                       default=config.get('default_conf_threshold', 0.25),
                        help='Confidence threshold for predictions')
-    parser.add_argument('--iou', type=float, default=0.7,
+    parser.add_argument('--iou', type=float, 
+                       default=config.get('default_iou_threshold', 0.7),
                        help='IoU threshold for NMS')
-    parser.add_argument('--imgsz', type=int, default=640,
+    parser.add_argument('--imgsz', type=int, 
+                       default=config.get('default_test_imgsz', 640),
                        help='Image size for inference')
     parser.add_argument('--no-validate', action='store_true',
                        help='Skip validation on validation set')
     parser.add_argument('--no-test', action='store_true',
                        help='Skip testing on test set')
     parser.add_argument('--save-images', action='store_true',
+                       default=config.get('save_images_default', False),
                        help='Save prediction images (default: do not save images)')
     parser.add_argument('--no-save-txt', action='store_true',
                        help='Do not save predictions as text files')
@@ -214,8 +218,8 @@ def main():
                 iou_threshold=args.iou,
                 imgsz=args.imgsz,
                 save_images=args.save_images,
-                save_txt=not args.no_save_txt,
-                save_conf=not args.no_save_conf
+                save_txt=not args.no_save_txt if not args.no_save_txt else config.get('save_txt_default', True),
+                save_conf=not args.no_save_conf if not args.no_save_conf else config.get('save_conf_default', True)
             )
         
         

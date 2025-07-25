@@ -14,6 +14,9 @@ slurm_outputs/
 yolo*.pt
 yolo11*.pt
 
+# Model Zoo
+models/
+
 # Training Analysis Notebook
 yolo_training_analysis.ipynb
 
