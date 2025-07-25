@@ -1,16 +1,10 @@
 #!/usr/bin/env python3
 """
-KITTI to YOLO Dataset Converter with Benchmark Class Remapping
+KITTI to YOLO Dataset Converter
 
-This script converts KITTI dataset format to YOLO format for object detection
-using the standard KITTI benchmark class mapping. It merges similar classes
-and marks non-scored classes as ignored for proper benchmark evaluation.
-
-Class Mapping (KITTI Benchmark Standard):
-- Car (includes Van) → class_id = 0
-- Pedestrian (includes Person_sitting) → class_id = 1  
-- Cyclist → class_id = 2
-- Truck, Tram, Misc, DontCare → class_id = -1 (ignored)
+This script converts KITTI dataset format to YOLO format for object detection.
+It handles the conversion of bounding box annotations and organizes images
+according to YOLO standards.
 
 KITTI format:
 - Labels: class truncated occluded alpha x1 y1 x2 y2 h w l x y z rotation_y
@@ -18,7 +12,6 @@ KITTI format:
 
 YOLO format:
 - Labels: class_id center_x center_y width height (normalized 0-1)
-- Ignored boxes use class_id = -1 for zero loss during training
 """
 
 import os
@@ -48,56 +41,21 @@ class KittiToYoloConverter:
         self.yolo_root = Path(yolo_root)
         self.train_split = train_split
         
-        # KITTI benchmark class mapping - 3 scored classes + ignore
-        # Following popular KITTI benchmark practice
-        self.class_mapping = self._get_kitti_benchmark_mapping()
-        
-        # Define the 3 scored class names for YAML output
-        self.scored_class_names = ['Car', 'Pedestrian', 'Cyclist']
+        # KITTI class mapping to YOLO class IDs
+        self.class_mapping = {
+            'Car': 0,
+            'Van': 1, 
+            'Truck': 2,
+            'Pedestrian': 3,
+            'Person_sitting': 4,
+            'Cyclist': 5,
+            'Tram': 6,
+            'Misc': 7,
+            'DontCare': -1  # Usually ignored in YOLO
+        }
         
         # Create YOLO directory structure
         self._create_yolo_structure()
-    
-    def _get_kitti_benchmark_mapping(self) -> Dict[str, int]:
-        """
-        Get KITTI benchmark class mapping with 3 scored classes.
-        
-        Returns:
-            Dictionary mapping KITTI class names to YOLO class IDs
-            Class IDs: 0=Car (Car+Van), 1=Pedestrian (Pedestrian+Person_sitting), 
-                      2=Cyclist, -1=ignore (all others)
-        """
-        return {
-            # Scored classes
-            'Car': 0,
-            'Van': 0,  # Merged with Car
-            'Pedestrian': 1,
-            'Person_sitting': 1,  # Merged with Pedestrian
-            'Cyclist': 2,
-            # Ignored classes (marked with -1 for YOLO ignore)
-            'Truck': -1,
-            'Tram': -1,
-            'Misc': -1,
-            'DontCare': -1
-        }
-    
-    def remap_kitti_type(self, class_name: str) -> int:
-        """
-        Remap KITTI class type following benchmark convention.
-        
-        Args:
-            class_name: Original KITTI class name
-            
-        Returns:
-            Class ID: 0=Car, 1=Pedestrian, 2=Cyclist, -1=ignore
-        """
-        if class_name in {'Car', 'Van'}:
-            return 0  # Car
-        if class_name in {'Pedestrian', 'Person_sitting'}:
-            return 1  # Pedestrian
-        if class_name == 'Cyclist':
-            return 2  # Cyclist
-        return -1  # Truck / Tram / Misc / DontCare → ignore
     
     def _create_yolo_structure(self):
         """Create YOLO dataset directory structure."""
@@ -167,11 +125,15 @@ class KittiToYoloConverter:
                 
                 class_name = parts[0]
                 
-                # Use benchmark remapping function
-                class_id = self.remap_kitti_type(class_name)
+                # Skip DontCare class
+                if class_name == 'DontCare':
+                    continue
                 
-                # Process all classes including ignored ones (class_id = -1)
-                # Ignored boxes will be saved with class_id = -1 for YOLO to ignore during training
+                # Get class ID
+                class_id = self.class_mapping.get(class_name, -1)
+                if class_id == -1:
+                    logger.warning(f"Unknown class: {class_name}")
+                    continue
                 
                 # Parse bounding box coordinates (x1, y1, x2, y2)
                 x1, y1, x2, y2 = map(float, parts[4:8])
@@ -282,25 +244,25 @@ class KittiToYoloConverter:
         logger.info(f"Completed {split_name} split: {converted_count} samples converted")
     
     def create_yaml_config(self):
-        """Create YOLO dataset configuration file with KITTI benchmark classes."""
+        """Create YOLO dataset configuration file."""
+        class_names = [k for k, v in self.class_mapping.items() if v != -1]
+        
         yaml_content = f"""# YOLO dataset configuration
-# Converted from KITTI dataset using benchmark class mapping
-# 3 scored classes: Car (includes Van), Pedestrian (includes Person_sitting), Cyclist
-# Other classes (Truck, Tram, Misc, DontCare) are marked as ignore (class_id = -1)
+# Converted from KITTI dataset
 
 path: {self.yolo_root.absolute()}  # dataset root dir
 train: train/images  # train images (relative to 'path')
 val: val/images      # val images (relative to 'path') 
 test: test/images    # test images (relative to 'path')
 
-# Classes (only scored classes listed, ignored classes have class_id = -1)
+# Classes
 names:
 """
         
-        for i, class_name in enumerate(self.scored_class_names):
+        for i, class_name in enumerate(class_names):
             yaml_content += f"  {i}: {class_name}\n"
         
-        yaml_content += f"\n# Number of classes (scored only, ignored classes not counted)\nnc: {len(self.scored_class_names)}\n"
+        yaml_content += f"\n# Number of classes\nnc: {len(class_names)}\n"
         
         yaml_path = self.yolo_root / 'dataset.yaml'
         with open(yaml_path, 'w') as f:
@@ -309,9 +271,8 @@ names:
         logger.info(f"Created dataset configuration: {yaml_path}")
     
     def convert(self):
-        """Convert the entire KITTI dataset to YOLO format with KITTI benchmark remapping."""
-        logger.info("Starting KITTI to YOLO conversion with benchmark class remapping")
-        logger.info("Class mapping: Car+Van→0, Pedestrian+Person_sitting→1, Cyclist→2, Others→-1 (ignore)")
+        """Convert the entire KITTI dataset to YOLO format."""
+        logger.info("Starting KITTI to YOLO conversion")
         logger.info(f"Train/validation split ratio: {self.train_split:.1%} train, {1-self.train_split:.1%} validation")
         
         # Create splits from available data
@@ -329,8 +290,6 @@ names:
         self.create_yaml_config()
         
         logger.info("KITTI to YOLO conversion completed successfully!")
-        logger.info("Dataset uses KITTI benchmark mapping with 3 scored classes + ignored boxes")
-        logger.info("Ignored boxes (class_id = -1) will be handled by YOLO during training")
 
 
 def main():

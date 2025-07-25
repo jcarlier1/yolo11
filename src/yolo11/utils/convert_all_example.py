@@ -3,7 +3,7 @@
 Example usage of the KITTI to YOLO converter
 """
 
-from kitti_converter import KittiToYoloConverter
+from kitti_all_converter import KittiToYoloConverter
 import logging
 
 # Configure logging
