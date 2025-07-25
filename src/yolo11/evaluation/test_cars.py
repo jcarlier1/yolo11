@@ -45,10 +45,13 @@ def verify_test_setup():
     print(f"  Classes: {len(config_data.get('names', {}))}")
     print(f"  Class names: {list(config_data.get('names', {}).values())}")
     
+    print("✓ Test setup verified!")
+    print()
+
     return True
 
 def test_model(weights_path, conf_threshold=0.25, iou_threshold=0.7, imgsz=640, 
-               output_name='test_yolov11x_cars', save_txt=True, save_conf=True):
+               save_images=False, save_txt=True, save_conf=True):
     """
     Test the trained car detection model on test set.
     
@@ -58,6 +61,7 @@ def test_model(weights_path, conf_threshold=0.25, iou_threshold=0.7, imgsz=640,
         iou_threshold: IoU threshold for NMS
         imgsz: Image size for inference
         output_name: Name for output directory
+        save_images: Save prediction images
         save_txt: Save predictions as text files
         save_conf: Save confidence scores
     """
@@ -72,7 +76,8 @@ def test_model(weights_path, conf_threshold=0.25, iou_threshold=0.7, imgsz=640,
     print(f"  - Confidence threshold: {conf_threshold}")
     print(f"  - IoU threshold: {iou_threshold}")
     print(f"  - Image size: {imgsz}")
-    print(f"  - Output name: {output_name}")
+    print(f"  - Experiment name: {config.get('experiment_name', 'exp')}")
+    print(f"  - Save images: {save_images}")
     print(f"  - Save predictions: {save_txt}")
     print(f"  - Save confidence: {save_conf}")
     
@@ -89,18 +94,21 @@ def test_model(weights_path, conf_threshold=0.25, iou_threshold=0.7, imgsz=640,
         imgsz=imgsz,
         conf=conf_threshold,
         iou=iou_threshold,
-        save=True,
+        save=save_images,
         save_txt=save_txt,
         save_conf=save_conf,
         project=config.get('runs_dir', 'runs') + "/detect",
-        name=output_name,
+        name=Path(weights_path).stem + "_" + config.get('experiment_name', 'exp'),
         exist_ok=True,
         verbose=True,
         device=0,  # Use GPU if available
     )
     
-    print("Testing completed!")
-    print(f"Results saved at: runs/detect/{output_name}/")
+    print("✓ Testing completed!")
+    results_dir = f"{config.get('runs_dir', 'runs')}/detect/{Path(weights_path).stem}_{config.get('experiment_name', 'exp')}/"
+    print(f"Results saved at: {results_dir}")
+    print()
+    
     
     # Print summary statistics
     if test_results:
@@ -150,9 +158,12 @@ def validate_model(weights_path, imgsz=640, batch=16):
         plots=True,
         save_json=True,
         device=0,  # Use GPU if available
+        project=config.get('runs_dir', 'runs') + "/val",
+        name=Path(weights_path).stem + "_" + config.get('experiment_name', 'exp'),
     )
     
-    print("Validation completed!")
+    print("✓ Validation completed!")
+    print()
     return val_results
 
 def main():
@@ -167,10 +178,12 @@ def main():
                        help='IoU threshold for NMS')
     parser.add_argument('--imgsz', type=int, default=640,
                        help='Image size for inference')
-    parser.add_argument('--name', type=str, default='test_yolov11x_cars',
-                       help='Name for output directory')
     parser.add_argument('--no-validate', action='store_true',
                        help='Skip validation on validation set')
+    parser.add_argument('--no-test', action='store_true',
+                       help='Skip testing on test set')
+    parser.add_argument('--save-images', action='store_true',
+                       help='Save prediction images (default: do not save images)')
     parser.add_argument('--no-save-txt', action='store_true',
                        help='Do not save predictions as text files')
     parser.add_argument('--no-save-conf', action='store_true',
@@ -185,34 +198,29 @@ def main():
         # Step 1: Verify test setup
         print("Step 1: Verifying test setup...")
         verify_test_setup()
-        print("✓ Test setup verified!")
-        print()
         
         # Step 2: Run validation (if requested)
         if not args.no_validate:
             print("Step 2: Running validation...")
             val_results = validate_model(args.weights)
-            print("✓ Validation completed!")
-            print()
         
         # Step 3: Test model
-        test_step = "Step 3" if not args.no_validate else "Step 2"
-        print(f"{test_step}: Testing model on test set...")
-        test_results = test_model(
-            weights_path=args.weights,
-            conf_threshold=args.conf,
-            iou_threshold=args.iou,
-            imgsz=args.imgsz,
-            output_name=args.name,
-            save_txt=not args.no_save_txt,
-            save_conf=not args.no_save_conf
-        )
-        print("✓ Testing completed!")
-        print()
+        if not args.no_test:
+            test_step = "Step 3" if not args.no_validate else "Step 2"
+            print(f"{test_step}: Testing model on test set...")
+            test_results = test_model(
+                weights_path=args.weights,
+                conf_threshold=args.conf,
+                iou_threshold=args.iou,
+                imgsz=args.imgsz,
+                save_images=args.save_images,
+                save_txt=not args.no_save_txt,
+                save_conf=not args.no_save_conf
+            )
         
         
-        print("=== Testing completed successfully! ===")
-        print(f"Check the 'runs/detect/{args.name}/' directory for results.")
+        print("=== Testing script completed successfully! ===")
+        print(f"Check the '{config.get('runs_dir', 'runs')}/detect/{Path(args.weights).stem}_{config.get('experiment_name', 'exp')}/' directory for results.")
         
     except Exception as e:
         print(f"Error during testing: {e}")
