@@ -34,6 +34,7 @@ echo "CUDA Version:"
 nvcc --version
 
 # Set environment variables for optimal performance
+export PYTHONPATH=$(pwd)
 export CUDA_VISIBLE_DEVICES=0
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK

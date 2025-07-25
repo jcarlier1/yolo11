@@ -97,15 +97,40 @@ def test_model(weights_path, conf_threshold=0.25, iou_threshold=0.7, imgsz=640,
         save=save_images,
         save_txt=save_txt,
         save_conf=save_conf,
-        project=config.get('runs_dir', 'runs') + "/detect",
+        project=config.get('runs_dir', 'runs') + "/test",
         name=Path(weights_path).stem + "_" + config.get('experiment_name', 'exp'),
         exist_ok=True,
         verbose=True,
         device=0,  # Use GPU if available
     )
+
+    # Save aggregated speed information to a text file
+    results_dir = f"{config.get('runs_dir', 'runs')}/test/{Path(weights_path).stem}_{config.get('experiment_name', 'exp')}/"
+    speed_file = Path(results_dir) / "speed_info.txt"
+    speed_file.parent.mkdir(parents=True, exist_ok=True)
+
+    # Aggregate speed info across all results
+    if test_results and hasattr(test_results[0], 'speed'):
+        speed_keys = test_results[0].speed.keys()
+        speed_sums = {k: 0.0 for k in speed_keys}
+        count = 0
+        for result in test_results:
+            if hasattr(result, 'speed') and result.speed:
+                for k in speed_keys:
+                    speed_sums[k] += result.speed.get(k, 0.0)
+                count += 1
+        if count > 0:
+            with open(speed_file, 'w') as f:
+                f.write("Aggregated Speed Information (mean ms per image):\n")
+                for k in speed_keys:
+                    mean_speed = speed_sums[k] / count
+                    f.write(f"{k}: {mean_speed:.2f}\n")
+            print(f"Aggregated speed information saved to: {speed_file}")
+
+    
     
     print("✓ Testing completed!")
-    results_dir = f"{config.get('runs_dir', 'runs')}/detect/{Path(weights_path).stem}_{config.get('experiment_name', 'exp')}/"
+    results_dir = f"{config.get('runs_dir', 'runs')}/test/{Path(weights_path).stem}_{config.get('experiment_name', 'exp')}/"
     print(f"Results saved at: {results_dir}")
     print()
     
@@ -161,6 +186,22 @@ def validate_model(weights_path, imgsz=640, batch=16):
         project=config.get('runs_dir', 'runs') + "/val",
         name=Path(weights_path).stem + "_" + config.get('experiment_name', 'exp'),
     )
+
+    # Save validation results to a text file
+    results_dir = f"{config.get('runs_dir', 'runs')}/val/{Path(weights_path).stem}_{config.get('experiment_name', 'exp')}/"
+    results_file = Path(results_dir) / "validation_results.txt"
+    results_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    with open(results_file, 'w') as f:
+        f.write("Validation Results:\n")
+        f.write(f"mAP50-95: {val_results.box.map:.4f}\n")
+        f.write(f"mAP50: {val_results.box.map50:.4f}\n")
+        f.write(f"mAP75: {val_results.box.map75:.4f}\n")
+        f.write("Per-category mAP50-95:\n")
+        for i, category_map in enumerate(val_results.box.maps):
+            f.write(f"  Category {i}: {category_map:.4f}\n")
+    
+    print(f"Validation results saved to: {results_file}")
     
     print("✓ Validation completed!")
     print()
@@ -224,7 +265,7 @@ def main():
         
         
         print("=== Testing script completed successfully! ===")
-        print(f"Check the '{config.get('runs_dir', 'runs')}/detect/{Path(args.weights).stem}_{config.get('experiment_name', 'exp')}/' directory for results.")
+        print(f"Check the '{config.get('runs_dir', 'runs')}/test/{Path(args.weights).stem}_{config.get('experiment_name', 'exp')}/' directory for results.")
         
     except Exception as e:
         print(f"Error during testing: {e}")

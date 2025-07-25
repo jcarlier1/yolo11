@@ -35,6 +35,16 @@ class Config:
         
         # Training settings
         'project_name': 'runs/detect',
+
+        # Testing settings (used by test.py)
+        'experiment_name': "kitti_test",  # Name for experiment output directories
+        'default_test_weights': "models/11n.pt",  # Default weights file for testing
+        'default_conf_threshold': 0.25,  # Default confidence threshold
+        'default_iou_threshold': 0.7,     # Default IoU threshold for NMS
+        'default_test_imgsz': 640,        # Default image size for testing
+        'save_images_default': 'false',    # Default setting for saving prediction images
+        'save_txt_default': 'true',       # Default setting for saving text predictions
+        'save_conf_default': 'true'      # Default setting for saving confidence scores
     }
     
     def __init__(self, local_config_path: str = 'local_config.yaml'):
