@@ -21,6 +21,7 @@
 ```yaml
 # Dataset paths
 dataset_root: "/path/to/main/dataset"
+all_dataset_root: "/path/to/all/dataset"
 car_dataset_root: "/path/to/car/dataset"
 
 # Model settings  

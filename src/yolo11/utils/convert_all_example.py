@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 def main():
     # Define paths - UPDATE THESE TO YOUR ACTUAL PATHS
     kitti_root = "./data/kitti"  # Update this path
-    yolo_root = "./data/yolo_kitti"  # Update this path
+    yolo_root = "./data/yolo_kitti_all"  # Update this path
     
     print("KITTI to YOLO Dataset Converter")
     print("=" * 40)
@@ -29,7 +29,7 @@ def main():
     print("\nConversion completed!")
     print(f"YOLO dataset created at: {yolo_root}")
     print("Dataset structure:")
-    print("  yolo_kitti/")
+    print("  yolo_kitti_all/")
     print("  ├── train/")
     print("  │   ├── images/")
     print("  │   └── labels/")

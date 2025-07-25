@@ -1,6 +1,17 @@
 #!/usr/bin/env python
 """
 Fine-tune YOLO v11x on KITTI dataset converted to YOLO format
+
+This script uses configuration from local_config.yaml to set all training parameters.
+To customize training, modify the values in local_config.yaml or create one from the template
+in docs/local_config.yaml.template
+
+All training hyperparameters are configurable including:
+- Model type and training epochs
+- Batch size and image size
+- Learning rate and optimizer settings
+- Loss weights and augmentation parameters
+- Performance optimizations
 """
 
 from pathlib import Path
@@ -62,107 +73,76 @@ def train_model():
 
     print(f"Starting YOLO training with dataset: {dataset_paths['data_yaml']}")
     
-    # Load pretrained model (using YOLOv11s)
+    # Load pretrained model
     model = YOLO(config.get('default_model', 'yolo11s.pt'))
     
-    # Training configuration optimized for single NVIDIA H200 GPU (144GB VRAM)
-    results = model.train(
-        data=str(dataset_paths['data_yaml']),        # Dataset configuration
-        epochs=config.get('default_epochs', 500),   # Maximum epochs
-        patience=50,                # Early stopping patience
-        imgsz=config.get('default_imgsz', 640),     # Image size
-        batch=config.get('default_batch_size', 64), # Large batch size for H200 GPU
-        device=0,                   # Use first GPU only
-        name="kitti_yolo11s",       # Experiment name
-        save_period=10,             # Save checkpoint every 10 epochs
-        val=True,                   # Enable validation
-        plots=True,                 # Generate training plots
-        verbose=True,               # Verbose output
-        exist_ok=True,              # Allow overwriting existing experiment
-        # Optimized parameters for single GPU training
-        lr0=0.001,                  # Standard learning rate for single GPU
-        optimizer='AdamW',          # Use AdamW optimizer
-        cos_lr=True,                # Cosine learning rate scheduler
-        warmup_epochs=3,            # Warmup epochs
-        warmup_momentum=0.8,        # Warmup momentum
-        warmup_bias_lr=0.1,         # Warmup bias learning rate
-        box=7.5,                    # Box loss weight
-        cls=0.5,                    # Classification loss weight
-        dfl=1.5,                    # DFL loss weight
-        amp=True,                   # Automatic Mixed Precision (crucial for H200)
-        cache='ram',                # Cache entire dataset in RAM (H200 has lots of memory)
-        workers=8,                  # Reasonable number of workers for single GPU
-        close_mosaic=20,            # Close mosaic augmentation in last 20 epochs
-        # Additional optimizations for single GPU training
-        rect=True,                  # Rectangular training for efficiency
-        single_cls=False,           # Multi-class training
-        deterministic=False,        # Allow non-deterministic for speed
-        seed=42,                    # Set seed for reproducibility
-    )
+    # Get training configuration from config with fallbacks
+    training_config = {
+        'data': str(dataset_paths['data_yaml']),
+        'epochs': config.get('default_epochs', 500),
+        'patience': config.get('training_patience', 50),
+        'imgsz': config.get('default_imgsz', 640),
+        'batch': config.get('default_batch_size', -1),
+        'device': config.get('training_device', 0),
+        'name': config.get('experiment_name', 'kitti_yolo11s'),
+        'save_period': config.get('save_period', 10),
+        'val': config.get('enable_validation', True),
+        'plots': config.get('generate_plots', True),
+        'verbose': config.get('verbose_output', True),
+        'exist_ok': config.get('allow_overwrite', True),
+        # Optimizer settings
+        'lr0': config.get('learning_rate', 0.001),
+        'optimizer': config.get('optimizer', 'AdamW'),
+        'cos_lr': config.get('cosine_lr_scheduler', True),
+        'warmup_epochs': config.get('warmup_epochs', 3),
+        'warmup_momentum': config.get('warmup_momentum', 0.8),
+        'warmup_bias_lr': config.get('warmup_bias_lr', 0.1),
+        # Loss weights
+        'box': config.get('box_loss_weight', 7.5),
+        'cls': config.get('cls_loss_weight', 0.5),
+        'dfl': config.get('dfl_loss_weight', 1.5),
+        # Performance optimizations
+        'amp': config.get('mixed_precision', True),
+        'cache': config.get('cache_mode', 'ram'),
+        'workers': config.get('num_workers', 8),
+        'close_mosaic': config.get('close_mosaic_epochs', 20),
+        'rect': config.get('rectangular_training', True),
+        'single_cls': config.get('single_class', False),
+        'deterministic': config.get('deterministic', False),
+        'seed': config.get('random_seed', 42),
+    }
+    
+    # Print training configuration
+    print(f"\nTraining Configuration:")
+    for key, value in training_config.items():
+        print(f"  {key}: {value}")
+    print()
+    
+    results = model.train(**training_config)
     
     print(f"Training completed successfully!")
-    print(f"Best weights saved at: runs/detect/kitti_yolo11s/weights/best.pt")
-    print(f"Last weights saved at: runs/detect/kitti_yolo11s/weights/last.pt")
+    
+    # Get experiment name for output paths
+    experiment_name = config.get('experiment_name', 'kitti_yolo11s')
+    project_name = config.get('project_name', 'runs/detect')
+    
+    print(f"Best weights saved at: {project_name}/{experiment_name}/weights/best.pt")
+    print(f"Last weights saved at: {project_name}/{experiment_name}/weights/last.pt")
     
     # Print training summary
     if hasattr(results, 'results_dict'):
         metrics = results.results_dict
         print(f"\nTraining Summary:")
-        print(f"  - Best mAP@0.5: {metrics.get('metrics/mAP50(B)', 'N/A')}")
-        print(f"  - Best mAP@0.5:0.95: {metrics.get('metrics/mAP50-95(B)', 'N/A')}")
-        print(f"  - Precision: {metrics.get('metrics/precision(B)', 'N/A')}")
-        print(f"  - Recall: {metrics.get('metrics/recall(B)', 'N/A')}")
+        for metric_key, display_name in [
+            ('metrics/mAP50(B)', 'Best mAP@0.5'),
+            ('metrics/mAP50-95(B)', 'Best mAP@0.5:0.95'),
+            ('metrics/precision(B)', 'Precision'),
+            ('metrics/recall(B)', 'Recall')
+        ]:
+            value = metrics.get(metric_key, 'N/A')
+            print(f"  - {display_name}: {value}")
     
     return results
-
-def validate_model(weights_path="runs/detect/kitti_yolo11s/weights/best.pt"):
-    """Validate the trained model."""
-    from ultralytics import YOLO
-    
-    print(f"Validating model with weights: {weights_path}")
-    
-    # Load trained model
-    model = YOLO(weights_path)
-    
-    # Run validation
-    val_results = model.val(
-        data=str(dataset_paths['data_yaml']),
-        imgsz=640,
-        batch=16,
-        verbose=True,
-        plots=True,
-        save_json=True,
-    )
-    
-    print("Validation completed!")
-    return val_results
-
-def test_model(weights_path="runs/detect/kitti_yolo11s/weights/best.pt"):
-    """Test the trained model on test set."""
-    from ultralytics import YOLO
-    
-    print(f"Testing model with weights: {weights_path}")
-    
-    # Load trained model
-    model = YOLO(weights_path)
-    
-    # Run prediction on test set
-    test_results = model.predict(
-        source=str(dataset_paths['test_images']),
-        imgsz=640,
-        conf=0.25,
-        iou=0.7,
-        save=True,
-        save_txt=True,
-        save_conf=True,
-        project=config.get('runs_dir', 'runs') + "/detect",
-        name="kitti_yolo11s_test",
-        exist_ok=True,
-    )
-    
-    print("Testing completed!")
-    print(f"Results saved at: runs/detect/kitti_yolo11s_test/")
-    return test_results
 
 # ------------------------------------------------------------------------------------
 # 5. Run everything
@@ -184,20 +164,10 @@ if __name__ == "__main__":
         print("✓ Training completed!")
         print()
         
-        # Step 3: Validate model
-        print("Step 3: Validating trained model...")
-        val_results = validate_model()
-        print("✓ Validation completed!")
-        print()
-        
-        # Step 4: Test model (optional)
-        print("Step 4: Testing model on test set...")
-        test_results = test_model()
-        print("✓ Testing completed!")
-        print()
-        
+        # Step 3: Final summary
         print("=== All steps completed successfully! ===")
-        print("Check the 'runs/detect/' directory for results, plots, and weights.")
+        project_name = config.get('project_name', 'runs/detect')
+        print(f"Check the '{project_name}/' directory for results, plots, and weights.")
         
     except Exception as e:
         print(f"Error during execution: {e}")

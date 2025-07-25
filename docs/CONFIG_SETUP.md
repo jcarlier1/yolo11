@@ -13,6 +13,7 @@ This project uses a local configuration system to manage paths and settings acro
    ```yaml
    # Dataset paths - UPDATE THESE TO YOUR ACTUAL PATHS
    dataset_root: "/path/to/your/yolo_kitti"
+   all_dataset_root: "/path/to/your/yolo_kitti_all"
    car_dataset_root: "/path/to/your/yolo_kitti_cars"
    ```
 
@@ -23,18 +24,21 @@ This project uses a local configuration system to manage paths and settings acro
 ### Local Development
 ```yaml
 dataset_root: "./data/yolo_kitti"
+all_dataset_root: "./data/yolo_kitti_all"
 car_dataset_root: "./data/yolo_kitti_cars"
 ```
 
 ### HPC Systems (like MSU HPCC)
 ```yaml
 dataset_root: "/mnt/home/username/data/yolo_kitti"
+all_dataset_root: "/mnt/home/username/data/yolo_kitti_all"
 car_dataset_root: "/mnt/home/username/data/yolo_kitti_cars"
 ```
 
 ### Scratch Storage
 ```yaml
 dataset_root: "/scratch/username/data/yolo_kitti"
+all_dataset_root: "/scratch/username/data/yolo_kitti_all"
 car_dataset_root: "/scratch/username/data/yolo_kitti_cars"
 ```
 

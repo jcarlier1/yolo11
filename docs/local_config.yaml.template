@@ -4,6 +4,7 @@
 
 # Dataset paths - UPDATE THESE TO YOUR ACTUAL PATHS
 dataset_root: "/path/to/your/yolo_kitti"
+all_dataset_root: "/path/to/your/yolo_kitti_all"
 car_dataset_root: "/path/to/your/yolo_kitti_cars"
 
 # Model paths (relative to project root)
@@ -25,16 +26,51 @@ default_batch_size: -1  # -1 for auto batch size
 project_name: "runs/detect"
 experiment_name: "your_experiment_name"
 
+# Training hyperparameters
+training_patience: 50              # Early stopping patience
+training_device: 0                 # GPU device to use
+save_period: 10                    # Save checkpoint every N epochs
+enable_validation: true            # Enable validation during training
+generate_plots: true               # Generate training plots
+verbose_output: true               # Verbose output
+allow_overwrite: true              # Allow overwriting existing experiments
+
+# Optimizer settings
+learning_rate: 0.001               # Initial learning rate
+optimizer: "AdamW"                 # Optimizer type
+cosine_lr_scheduler: true          # Use cosine learning rate scheduler
+warmup_epochs: 3                   # Number of warmup epochs
+warmup_momentum: 0.8               # Warmup momentum
+warmup_bias_lr: 0.1                # Warmup bias learning rate
+
+# Loss weights
+box_loss_weight: 7.5               # Box loss weight
+cls_loss_weight: 0.5               # Classification loss weight
+dfl_loss_weight: 1.5               # DFL loss weight
+
+# Performance optimizations
+mixed_precision: true              # Use Automatic Mixed Precision
+cache_mode: "ram"                  # Cache mode ('ram', 'disk', or false)
+num_workers: 8                     # Number of data loading workers
+close_mosaic_epochs: 20            # Close mosaic augmentation in last N epochs
+rectangular_training: true         # Use rectangular training
+single_class: false                # Single class training
+deterministic: false               # Use deterministic operations
+random_seed: 42                    # Random seed for reproducibility
+
 # Example configurations for different environments:
 #
 # For local development:
 # dataset_root: "./data/yolo_kitti"
+# all_# dataset_root: "./data/yolo_kitti_all"
 # car_dataset_root: "./data/yolo_kitti_cars"
 #
 # For HPCC (MSU):
 # dataset_root: "/mnt/home/username/data/yolo_kitti"
+# all_dataset_root: "/mnt/home/username/data/yolo_kitti_all"
 # car_dataset_root: "/mnt/home/username/data/yolo_kitti_cars"
 #
 # For other HPC systems:
 # dataset_root: "/scratch/username/data/yolo_kitti"
+# all_dataset_root: "/scratch/username/data/yolo_kitti_all"
 # car_dataset_root: "/scratch/username/data/yolo_kitti_cars"

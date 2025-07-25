@@ -297,7 +297,7 @@ def main():
     parser = argparse.ArgumentParser(description='Convert KITTI dataset to YOLO format')
     parser.add_argument('--kitti_root', type=str, default='./data/kitti',
                        help='Path to KITTI dataset root directory')
-    parser.add_argument('--yolo_root', type=str, default='./data/yolo_kitti',
+    parser.add_argument('--yolo_root', type=str, default='./data/yolo_kitti_all',
                        help='Path where YOLO dataset will be created')
     parser.add_argument('--train_split', type=float, default=0.8,
                        help='Percentage of training data to use for training (default: 0.8)')

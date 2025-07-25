@@ -16,6 +16,7 @@ class Config:
     DEFAULTS = {
         # Dataset paths
         'dataset_root': './data/yolo_kitti',
+        'all_dataset_root': './data/yolo_kitti_all',
         'car_dataset_root': './data/yolo_kitti_cars',
         
         # Model paths
@@ -35,9 +36,41 @@ class Config:
         
         # Training settings
         'project_name': 'runs/detect',
+        'experiment_name': 'kitti_yolo11s',
+        
+        # Training hyperparameters
+        'training_patience': 50,
+        'training_device': 0,
+        'save_period': 10,
+        'enable_validation': True,
+        'generate_plots': True,
+        'verbose_output': True,
+        'allow_overwrite': True,
+        
+        # Optimizer settings
+        'learning_rate': 0.001,
+        'optimizer': 'AdamW',
+        'cosine_lr_scheduler': True,
+        'warmup_epochs': 3,
+        'warmup_momentum': 0.8,
+        'warmup_bias_lr': 0.1,
+        
+        # Loss weights
+        'box_loss_weight': 7.5,
+        'cls_loss_weight': 0.5,
+        'dfl_loss_weight': 1.5,
+        
+        # Performance optimizations
+        'mixed_precision': True,
+        'cache_mode': 'ram',
+        'num_workers': 8,
+        'close_mosaic_epochs': 20,
+        'rectangular_training': True,
+        'single_class': False,
+        'deterministic': False,
+        'random_seed': 42,
 
         # Testing settings (used by test.py)
-        'experiment_name': "kitti_test",  # Name for experiment output directories
         'default_test_weights': "models/11n.pt",  # Default weights file for testing
         'default_conf_threshold': 0.25,  # Default confidence threshold
         'default_iou_threshold': 0.7,     # Default IoU threshold for NMS
