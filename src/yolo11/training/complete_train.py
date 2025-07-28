@@ -63,7 +63,7 @@ def verify_dataset_structure():
     print(f"\nDataset Configuration:")
     print(f"  Path: {config_data.get('path', 'Not specified')}")
     print(f"  Classes: {len(config_data.get('names', {}))}")
-    print(f"  Class names: {list(config_data.get('names', {}).values())}")
+    print(f"  Class names: {list(config_data.get('names', []))}")
     
     return True
 

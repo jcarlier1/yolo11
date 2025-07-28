@@ -43,7 +43,7 @@ def verify_test_setup():
     print(f"\nDataset Configuration:")
     print(f"  Path: {config_data.get('path', 'Not specified')}")
     print(f"  Classes: {len(config_data.get('names', {}))}")
-    print(f"  Class names: {list(config_data.get('names', {}).values())}")
+    print(f"  Class names: {list(config_data.get('names', []))}")
     
     print("✓ Test setup verified!")
     print()
