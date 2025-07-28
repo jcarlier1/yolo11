@@ -79,7 +79,6 @@ def train_model_single_split():
         batch=config.get('default_batch_size', 64), # Batch size
         device=0,                   # Use first GPU only
         name="kitti_yolo11s",       # Experiment name
-        save_period=10,             # Save checkpoint every 10 epochs
         val=True,                   # Enable validation
         plots=True,                 # Generate training plots
         verbose=True,               # Verbose output

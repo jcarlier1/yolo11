@@ -41,7 +41,6 @@ class Config:
         # Training hyperparameters
         'training_patience': 50,
         'training_device': 0,
-        'save_period': 10,
         'enable_validation': True,
         'generate_plots': True,
         'verbose_output': True,

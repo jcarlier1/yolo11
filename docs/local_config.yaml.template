@@ -29,7 +29,6 @@ experiment_name: "your_experiment_name"
 # Training hyperparameters
 training_patience: 50              # Early stopping patience
 training_device: 0                 # GPU device to use
-save_period: 10                    # Save checkpoint every N epochs
 enable_validation: true            # Enable validation during training
 generate_plots: true               # Generate training plots
 verbose_output: true               # Verbose output

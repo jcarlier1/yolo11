@@ -12,7 +12,6 @@ Previously hardcoded values that are now configurable:
 - `experiment_name`: Now uses `config.get('experiment_name', 'kitti_yolo11s')`
 - `patience`: Now configurable as `training_patience` (default: 50)
 - `device`: Now configurable as `training_device` (default: 0)
-- `save_period`: Now configurable (default: 10)
 - `val`, `plots`, `verbose`, `exist_ok`: All now configurable
 
 **Optimizer Settings:**

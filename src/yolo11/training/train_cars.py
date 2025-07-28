@@ -62,7 +62,6 @@ def main():
         project=project_name,
         name=experiment_name,
         save=True,
-        save_period=10,  # Save checkpoint every 10 epochs
         device=0,  # Use GPU if available, otherwise CPU
         workers=4,
         patience=20,  # Early stopping patience

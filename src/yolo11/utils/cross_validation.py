@@ -298,7 +298,6 @@ class YOLOCrossValidator:
             'batch': 32,  # Reduced for multiple folds
             'device': 0,
             'name': f'fold_{fold_idx}',
-            'save_period': 10,
             'val': True,
             'plots': True,
             'verbose': False,  # Reduce verbosity for multiple folds
