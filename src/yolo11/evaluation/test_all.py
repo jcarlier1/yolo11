@@ -11,7 +11,7 @@ from src.yolo11.utils.config_utils import get_config, get_dataset_config, verify
 
 # Get configuration
 config = get_config()
-dataset_paths = get_dataset_config('default')
+dataset_paths = get_dataset_config('all')
 
 def verify_test_setup():
     """Verify that the test setup is valid."""

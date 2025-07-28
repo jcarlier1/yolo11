@@ -80,7 +80,7 @@ echo "Output directory: $SLURM_OUTPUT_DIR"
 
 
 # Run the training script for car detection with YOLO11s
-python train_cars.py
+python src/yolo11/training/train_cars.py
 
 # Check training completion
 if [ $? -eq 0 ]; then

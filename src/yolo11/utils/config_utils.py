@@ -220,7 +220,7 @@ def get_dataset_config(dataset_type: str = 'default') -> Dict[str, Path]:
             'test_images': cfg.get_path('car_test_images'),
             'test_labels': cfg.get_path('car_test_labels'),
         }
-    else:
+    elif dataset_type == 'default':
         return {
             'root': cfg.get_path('yolo_root'),
             'data_yaml': cfg.get_path('data_yaml'),

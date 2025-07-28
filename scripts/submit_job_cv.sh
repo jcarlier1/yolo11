@@ -9,9 +9,9 @@ echo "  - 64GB RAM"
 echo "  - 8 hour time limit"
 echo ""
 
-
-# Check if dataset exists
-if [ ! -f "$(python -c "from src.yolo11.utils.config_utils import get_dataset_config; print(get_dataset_config('default')['data_yaml'])" 2>/dev/null)" ]; then
+export PYTHONPATH=$(pwd)
+DATASET_YAML=$(python -c "from src.yolo11.utils.config_utils import get_dataset_config; print(get_dataset_config('default')['data_yaml'])" 2>/dev/null | tail -n 1 | tr -d ' \n')
+if [ ! -f "$DATASET_YAML" ]; then
     echo "WARNING: Dataset not found! Check your local_config.yaml file."
     echo "Make sure to run the KITTI converter first and update your configuration!"
     read -p "Continue anyway? (y/n): " -n 1 -r
@@ -23,7 +23,7 @@ if [ ! -f "$(python -c "from src.yolo11.utils.config_utils import get_dataset_co
 fi
 
 # Submit the cross-validation training job
-JOB_ID=$(sbatch train_yolo_cv.slurm | grep -o '[0-9]*')
+JOB_ID=$(sbatch scripts/train_yolo_cv.slurm | grep -o '[0-9]*')
 
 if [ ! -z "$JOB_ID" ]; then
     echo "Job submitted successfully!"

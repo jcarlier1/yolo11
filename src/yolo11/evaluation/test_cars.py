@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Test YOLO11 model for Car detection on KITTI dataset
+Test model for Car detection on KITTI dataset
 """
 
 from pathlib import Path

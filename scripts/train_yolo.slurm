@@ -1,16 +1,16 @@
 #!/bin/bash --login
 #SBATCH --job-name=yolo11s_training
-#SBATCH --partition=general-long-gpu
+#SBATCH --partition=general-gpu
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=8
-#SBATCH --gres=gpu:a100:1
-#SBATCH --mem=64G
-#SBATCH --time=08:00:00
+#SBATCH --gres=gpu:1
+#SBATCH --mem=32G
+#SBATCH --time=02:30:00
 #SBATCH --output=%x_%j.out
 #SBATCH --error=%x_%j.err
 #SBATCH --mail-type=BEGIN,END,FAIL
-#SBATCH --mail-user=your-email@example.com
+#SBATCH --mail-user=carlier1@msu.edu
 
 # Print job information
 echo "Job started at: $(date)"
@@ -80,7 +80,7 @@ echo "Output directory: $SLURM_OUTPUT_DIR"
 
 
 # Run the training script for detection with YOLO11s
-python train.py
+python src/yolo11/training/train.py
 
 # Check training completion
 if [ $? -eq 0 ]; then

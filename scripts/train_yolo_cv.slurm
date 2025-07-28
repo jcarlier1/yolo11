@@ -79,7 +79,7 @@ echo "Starting YOLOv11s cross-validation training..."
 echo "Output directory: $SLURM_OUTPUT_DIR"
 
 # Run the cross-validation training script
-python train_cv.py --mode cv --k-folds 5 --epochs 100 --batch 32
+python src/yolo11/training/train_cv.py --mode cv --k-folds 5 --epochs 100 --batch 32
 
 # Check training completion
 if [ $? -eq 0 ]; then
