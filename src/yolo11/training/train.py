@@ -105,7 +105,7 @@ def train_model():
         'cache': config.get('cache_mode', 'ram'),
         'workers': config.get('num_workers', 8),
         'close_mosaic': config.get('close_mosaic_epochs', 20),
-        'rect': config.get('rectangular_training', True),
+        'rect': config.get('rectangular_training', False),
         'single_cls': config.get('single_class', False),
         'deterministic': config.get('deterministic', False),
         'seed': config.get('random_seed', 42),

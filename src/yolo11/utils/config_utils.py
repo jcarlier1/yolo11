@@ -64,7 +64,7 @@ class Config:
         'cache_mode': 'ram',
         'num_workers': 8,
         'close_mosaic_epochs': 20,
-        'rectangular_training': True,
+        'rectangular_training': False,
         'single_class': False,
         'deterministic': False,
         'random_seed': 42,

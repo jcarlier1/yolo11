@@ -1,5 +1,5 @@
 #!/bin/bash --login
-#SBATCH --job-name=yolo11s_premium
+#SBATCH --job-name=50split_remap_11x
 #SBATCH --partition=general-long-gpu
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
