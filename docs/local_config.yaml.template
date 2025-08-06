@@ -26,6 +26,17 @@ default_batch_size: -1  # -1 for auto batch size
 project_name: "runs/detect"
 experiment_name: "your_experiment_name"
 
+# Weights & Biases logging (optional)
+wandb_enabled: false                   # Enable/disable wandb logging
+wandb_project: "yolo11-kitti"         # wandb project name
+wandb_entity: null                     # wandb entity (team name), null for personal
+wandb_run_name: null                   # custom run name, null for auto-generated
+wandb_tags: ["yolo11", "kitti", "detection"]  # tags for the run
+wandb_notes: "YOLO11 training on KITTI dataset"  # run description
+wandb_save_code: true                  # save code to wandb
+wandb_log_model: "best"                # log model artifacts: "all", "best", or false
+wandb_online_only: true                # Force online-only mode, fail if offline
+
 # Training hyperparameters
 training_patience: 50              # Early stopping patience
 training_device: 0                 # GPU device to use

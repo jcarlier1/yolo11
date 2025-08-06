@@ -17,6 +17,9 @@ yolo11*.pt
 # Model Zoo
 models/
 
+# Wandb
+wandb/
+
 # Training Analysis Notebook
 yolo_training_analysis.ipynb
 
