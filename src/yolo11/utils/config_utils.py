@@ -101,36 +101,36 @@ class Config:
     
     def _setup_derived_paths(self):
         """Setup derived paths based on configuration."""
-        # Main dataset paths
+        # Main dataset paths (updated to match kitti2yolo.py output structure)
         yolo_root = Path(self.config['dataset_root'])
         self.config.update({
             'yolo_root': yolo_root,
             'data_yaml': yolo_root / 'dataset.yaml',
-            'train_dir': yolo_root / 'train',
-            'val_dir': yolo_root / 'val',
-            'test_dir': yolo_root / 'test',
-            'train_images': yolo_root / 'train' / 'images',
-            'train_labels': yolo_root / 'train' / 'labels',
-            'val_images': yolo_root / 'val' / 'images',
-            'val_labels': yolo_root / 'val' / 'labels',
-            'test_images': yolo_root / 'test' / 'images',
-            'test_labels': yolo_root / 'test' / 'labels',
+            'train_dir': yolo_root,  # No longer a subfolder, root is used
+            'val_dir': yolo_root,
+            'test_dir': yolo_root,
+            'train_images': yolo_root / 'images' / 'train',
+            'train_labels': yolo_root / 'labels' / 'train',
+            'val_images': yolo_root / 'images' / 'val',
+            'val_labels': yolo_root / 'labels' / 'val',
+            'test_images': yolo_root / 'images' / 'test',
+            'test_labels': yolo_root / 'labels' / 'test',
         })
         
-        # Car dataset paths
+        # Car dataset paths (updated to match kitti2yolo.py output structure)
         car_yolo_root = Path(self.config['car_dataset_root'])
         self.config.update({
             'car_yolo_root': car_yolo_root,
             'car_data_yaml': car_yolo_root / 'dataset.yaml',
-            'car_train_dir': car_yolo_root / 'train',
-            'car_val_dir': car_yolo_root / 'val',
-            'car_test_dir': car_yolo_root / 'test',
-            'car_train_images': car_yolo_root / 'train' / 'images',
-            'car_train_labels': car_yolo_root / 'train' / 'labels',
-            'car_val_images': car_yolo_root / 'val' / 'images',
-            'car_val_labels': car_yolo_root / 'val' / 'labels',
-            'car_test_images': car_yolo_root / 'test' / 'images',
-            'car_test_labels': car_yolo_root / 'test' / 'labels',
+            'car_train_dir': car_yolo_root,
+            'car_val_dir': car_yolo_root,
+            'car_test_dir': car_yolo_root,
+            'car_train_images': car_yolo_root / 'images' / 'train',
+            'car_train_labels': car_yolo_root / 'labels' / 'train',
+            'car_val_images': car_yolo_root / 'images' / 'val',
+            'car_val_labels': car_yolo_root / 'labels' / 'val',
+            'car_test_images': car_yolo_root / 'images' / 'test',
+            'car_test_labels': car_yolo_root / 'labels' / 'test',
         })
     
     def get(self, key: str, default: Any = None) -> Any:

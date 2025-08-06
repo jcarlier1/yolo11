@@ -1,20 +1,19 @@
 #!/bin/bash --login
-#SBATCH --job-name=yolo11s_training
+#SBATCH --job-name=yolo11s_premium
 #SBATCH --partition=general-long-gpu
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=8
-#SBATCH --gres=gpu:1
-#SBATCH --mem=64G
-#SBATCH --time=06:00:00
+#SBATCH --cpus-per-task=32
+#SBATCH --gres=gpu:a100:1
+#SBATCH --mem=128G
+#SBATCH --time=04:00:00
 #SBATCH --output=%x_%j.out
 #SBATCH --error=%x_%j.err
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=carlier1@msu.edu
 
-# Constraint to prefer newer GPU architectures for better CUDA 12.6 compatibility
-# Priority: A100 > H200 > L40S > V100S > V100 > K80
-#SBATCH --constraint="a100|h200|l40s|v100s|v100"
+# Explicitly request A100 or H200 for fastest training
+#SBATCH --constraint="a100|h200"
 
 # Print job information
 echo "Job started at: $(date)"
@@ -25,20 +24,11 @@ echo "CPUs per task: $SLURM_CPUS_PER_TASK"
 echo "Memory: $SLURM_MEM_PER_NODE MB"
 echo "Working directory: $(pwd)"
 
-# Load necessary modules - updated for newer GPU compatibility
+# Load necessary modules for premium GPUs
 module purge
 module load GCC/13.2.0
 module load Python/3.11.5
-
-# Conditional CUDA loading based on GPU type
-# Check if we got an older GPU and adjust CUDA version accordingly
-if srun nvidia-smi --query-gpu=name --format=csv,noheader | grep -qi "k80\|kepler"; then
-    echo "Detected older GPU architecture, loading CUDA 12.1.1 for compatibility"
-    module load CUDA/12.1.1
-else
-    echo "Detected modern GPU architecture, loading CUDA 12.6.0"
-    module load CUDA/12.6.0
-fi
+module load CUDA/12.6.0
 
 # Print GPU and CUDA information
 echo "Available GPUs:"
@@ -46,28 +36,23 @@ nvidia-smi --query-gpu=index,name,memory.total,memory.used,memory.free --format=
 echo "CUDA Version:"
 nvcc --version
 
-# Set environment variables for optimal performance
+# Set environment variables optimized for A100/H200
 export PYTHONPATH=$(pwd)
 export CUDA_VISIBLE_DEVICES=0
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export PATH="$HOME/.local/bin:$PATH"
 
-# GPU-specific optimizations
+# Premium GPU optimizations
 export CUDA_LAUNCH_BLOCKING=0
-export TORCH_CUDA_ARCH_LIST="6.0;6.1;7.0;7.5;8.0;8.6;9.0"
+export TORCH_CUDA_ARCH_LIST="8.0;8.6;9.0"
+export YOLO_CACHE_STRATEGY="ram"
+export YOLO_BATCH_SIZE="auto"
+export PYTORCH_CUDA_ALLOC_CONF="max_split_size_mb:512"
 
-# Set fixed cache strategy and batch size
-export YOLO_CACHE_STRATEGY="disk"
-export YOLO_BATCH_SIZE=16
-
-# Install PyTorch with dynamic CUDA support
-echo "Installing PyTorch and requirements..."
-if [[ $(module list 2>&1 | grep -o "CUDA/12\.6") ]]; then
-    pip install --user torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-else
-    pip install --user torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-fi
+# Install PyTorch with CUDA 12.6 support
+echo "Installing PyTorch and requirements for premium GPUs..."
+pip install --user torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 pip install --user ultralytics opencv-python pyyaml pandas matplotlib seaborn
 
 # Verify installation
@@ -87,7 +72,7 @@ if ! python -c "import torch; exit(0 if torch.cuda.is_available() else 1)"; then
     exit 1
 fi
 
-echo "✅ CUDA is working correctly"
+echo "✅ CUDA is working correctly with premium GPU"
 
 # Change to project directory
 cd $SLURM_SUBMIT_DIR
@@ -100,11 +85,10 @@ export SLURM_OUTPUT_DIR="slurm_outputs/$SLURM_JOB_ID"
 exec > >(tee -a $SLURM_OUTPUT_DIR/training.log)
 exec 2>&1
 
-echo "Starting YOLO training..."
+echo "Starting YOLO training on premium hardware..."
 echo "Output directory: $SLURM_OUTPUT_DIR"
 
-
-# Run the training script for detection with YOLO11s
+# Run the training script with premium GPU optimizations
 python src/yolo11/training/train.py
 
 # Check training completion
@@ -117,10 +101,11 @@ if [ $? -eq 0 ]; then
         cp -r runs/detect/kitti_yolo11s $SLURM_OUTPUT_DIR/
         
         # Create summary file
-        echo "Training Summary - Job ID: $SLURM_JOB_ID" > $SLURM_OUTPUT_DIR/summary.txt
+        echo "Premium Training Summary - Job ID: $SLURM_JOB_ID" > $SLURM_OUTPUT_DIR/summary.txt
         echo "Completed at: $(date)" >> $SLURM_OUTPUT_DIR/summary.txt
         echo "Node: $SLURM_NODELIST" >> $SLURM_OUTPUT_DIR/summary.txt
-        echo "GPUs used: 1" >> $SLURM_OUTPUT_DIR/summary.txt
+        echo "GPU: $(nvidia-smi --query-gpu=name --format=csv,noheader)" >> $SLURM_OUTPUT_DIR/summary.txt
+        echo "GPU Memory: $(nvidia-smi --query-gpu=memory.total --format=csv,noheader)" >> $SLURM_OUTPUT_DIR/summary.txt
         echo "Training time: $((SECONDS/3600)) hours $((SECONDS%3600/60)) minutes" >> $SLURM_OUTPUT_DIR/summary.txt
         
         # Extract final metrics if available
@@ -133,18 +118,8 @@ if [ $? -eq 0 ]; then
         echo "Results saved to: $SLURM_OUTPUT_DIR"
     fi
     
-    # Send success notification
-    echo "YOLO training completed successfully on job $SLURM_JOB_ID" | mail -s "YOLO Training Complete" your-email@example.com
-    
 else
     echo "Training failed with exit code $?"
-    
-    # Copy error logs
-    cp $SLURM_OUTPUT_DIR/training.log $SLURM_OUTPUT_DIR/error_log.txt
-    
-    # Send failure notification
-    echo "YOLO training failed on job $SLURM_JOB_ID. Check logs at: $SLURM_OUTPUT_DIR" | mail -s "YOLO Training Failed" your-email@example.com
-    
     exit 1
 fi
 
@@ -155,7 +130,4 @@ nvidia-smi
 echo "Job completed at: $(date)"
 echo "Total job time: $((SECONDS/3600)) hours $((SECONDS%3600/60)) minutes"
 
-# Clean up temporary files if needed
-# rm -rf /tmp/yolo_cache_*
-
-echo "Job finished successfully!"
+echo "Premium GPU job finished successfully!"

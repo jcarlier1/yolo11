@@ -74,7 +74,7 @@ def train_model():
     print(f"Starting YOLO training with dataset: {dataset_paths['data_yaml']}")
     
     # Load pretrained model
-    model = YOLO(config.get('default_model', 'yolo11s.pt'))
+    model = YOLO(config.get('default_model', 'yolo11n.pt'))
     
     # Get training configuration from config with fallbacks
     training_config = {
@@ -84,7 +84,7 @@ def train_model():
         'imgsz': config.get('default_imgsz', 640),
         'batch': config.get('default_batch_size', -1),
         'device': config.get('training_device', 0),
-        'name': config.get('experiment_name', 'kitti_yolo11s'),
+        'name': config.get('experiment_name', 'kitti_default'),
         'val': config.get('enable_validation', True),
         'plots': config.get('generate_plots', True),
         'verbose': config.get('verbose_output', True),
@@ -122,7 +122,7 @@ def train_model():
     print(f"Training completed successfully!")
     
     # Get experiment name for output paths
-    experiment_name = config.get('experiment_name', 'kitti_yolo11s')
+    experiment_name = config.get('experiment_name', 'kitti_default')
     project_name = config.get('project_name', 'runs/detect')
     
     print(f"Best weights saved at: {project_name}/{experiment_name}/weights/best.pt")

@@ -2,12 +2,6 @@
 # Quick submission script for YOLO training
 
 echo "Submitting YOLO training job to SLURM..."
-echo "Job configuration:"
-echo "  - 1x GPU (general-long-gpu partition)"
-echo "  - 8 CPU cores"
-echo "  - 64GB RAM"
-echo "  - 8 hour time limit"
-echo ""
 
 
 # Check if dataset exists

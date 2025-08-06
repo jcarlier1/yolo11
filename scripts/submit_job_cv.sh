@@ -2,12 +2,7 @@
 # Quick submission script for YOLO training
 
 echo "Submitting YOLOv11s cross-validation job to SLURM..."
-echo "Job configuration:"
-echo "  - 1x GPU (general-long-gpu partition)"
-echo "  - 8 CPU cores"
-echo "  - 64GB RAM"
-echo "  - 8 hour time limit"
-echo ""
+
 
 export PYTHONPATH=$(pwd)
 DATASET_YAML=$(python -c "from src.yolo11.utils.config_utils import get_dataset_config; print(get_dataset_config('default')['data_yaml'])" 2>/dev/null | tail -n 1 | tr -d ' \n')
