@@ -126,10 +126,12 @@ def train_model():
 
     print(f"Starting YOLO training with dataset: {dataset_paths['data_yaml']}")
     
-    # Load pretrained model from specific path
-    model_path = "/mnt/home/carlier1/Documents/yolo11/runs/detect/50split_remap_11s/weights/best.pt"
-    model = YOLO(model_path)
+    # Load YOLO model with default or specified model
+    model = YOLO(config.get('default_model', 'yolo11n.pt'))
     
+    # Load pretrained model from specific path
+    # model = YOLO("/mnt/home/carlier1/Documents/yolo11/runs/detect/50split_remap_11s/weights/best.pt")
+
     # Get training configuration from config with fallbacks
     training_config = {
         'data': str(dataset_paths['data_yaml']),

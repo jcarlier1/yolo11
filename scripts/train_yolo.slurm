@@ -1,12 +1,12 @@
 #!/bin/bash --login
-#SBATCH --job-name=50split_remap_11s_cont_cont
+#SBATCH --job-name=50split_remap_11n_2  # Update for each experiment
 #SBATCH --partition=general-long-gpu
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=8
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
-#SBATCH --time=08:00:00
+#SBATCH --time=10:00:00
 #SBATCH --output=%x_%j.out
 #SBATCH --error=%x_%j.err
 #SBATCH --mail-type=BEGIN,END,FAIL
