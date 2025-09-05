@@ -67,4 +67,4 @@ This repository provides a suite of tools and scripts for fine-tuning YOLO model
 - Example config files and templates are available in `docs/`.
 
 ## License
-This project is maintained by JuanEstebanCarlier. See repository for license details.
+This project is maintained by jcarlier1. See repository for license details.
