@@ -253,7 +253,7 @@ def main():
             )
         
         print("=== Testing script completed successfully! ===")
-        print(f"Check the '{config.get('runs_dir', 'runs')}/test/{Path(args.weights).stem}_{config.get('experiment_name', 'exp')}/' directory for results.")
+        print(f"Check the '{config.get('runs_dir', 'runs')}/val/{Path(args.weights).stem}_{config.get('experiment_name', 'exp')}/' directory for results.")
         
     except Exception as e:
         print(f"Error during testing: {e}")
