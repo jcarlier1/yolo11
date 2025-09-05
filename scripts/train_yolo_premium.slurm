@@ -1,12 +1,12 @@
 #!/bin/bash --login
-#SBATCH --job-name=50split_remap_11x
+#SBATCH --job-name=50split_remap_11n_2  # Update for each experiment
 #SBATCH --partition=general-long-gpu
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=32
 #SBATCH --gres=gpu:a100:1
 #SBATCH --mem=128G
-#SBATCH --time=04:00:00
+#SBATCH --time=08:00:00
 #SBATCH --output=%x_%j.out
 #SBATCH --error=%x_%j.err
 #SBATCH --mail-type=BEGIN,END,FAIL
@@ -94,29 +94,9 @@ python src/yolo11/training/train.py
 # Check training completion
 if [ $? -eq 0 ]; then
     echo "Training completed successfully!"
-    
-    # Copy results to output directory
-    if [ -d "runs/detect/kitti_yolo11s" ]; then
-        echo "Copying training results..."
-        cp -r runs/detect/kitti_yolo11s $SLURM_OUTPUT_DIR/
-        
-        # Create summary file
-        echo "Premium Training Summary - Job ID: $SLURM_JOB_ID" > $SLURM_OUTPUT_DIR/summary.txt
-        echo "Completed at: $(date)" >> $SLURM_OUTPUT_DIR/summary.txt
-        echo "Node: $SLURM_NODELIST" >> $SLURM_OUTPUT_DIR/summary.txt
-        echo "GPU: $(nvidia-smi --query-gpu=name --format=csv,noheader)" >> $SLURM_OUTPUT_DIR/summary.txt
-        echo "GPU Memory: $(nvidia-smi --query-gpu=memory.total --format=csv,noheader)" >> $SLURM_OUTPUT_DIR/summary.txt
-        echo "Training time: $((SECONDS/3600)) hours $((SECONDS%3600/60)) minutes" >> $SLURM_OUTPUT_DIR/summary.txt
-        
-        # Extract final metrics if available
-        if [ -f "runs/detect/kitti_yolo11s/results.csv" ]; then
-            echo "" >> $SLURM_OUTPUT_DIR/summary.txt
-            echo "Final Metrics:" >> $SLURM_OUTPUT_DIR/summary.txt
-            tail -1 runs/detect/kitti_yolo11s/results.csv >> $SLURM_OUTPUT_DIR/summary.txt
-        fi
-        
-        echo "Results saved to: $SLURM_OUTPUT_DIR"
-    fi
+
+    # Send success notification
+    echo "YOLO training completed successfully on job $SLURM_JOB_ID" | mail -s "YOLO Training Complete" your-email@example.com
     
 else
     echo "Training failed with exit code $?"

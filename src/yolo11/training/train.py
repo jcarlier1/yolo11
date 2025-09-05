@@ -126,6 +126,9 @@ def train_model():
 
     print(f"Starting YOLO training with dataset: {dataset_paths['data_yaml']}")
     
+    # Load YOLO model with default or specified model
+    model = YOLO(config.get('default_model', 'yolo11n.pt'))
+    
     # Load standard YOLO model (yolo11m.pt)
     model = YOLO('yolo11m.pt')
     
